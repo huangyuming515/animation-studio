@@ -2011,5 +2011,763 @@ function loop(time){
 }
 listLayers();refresh();refreshActor();drawGame(0);requestAnimationFrame(loop);
 </script>
+
+<!-- STUDIO_EIGHT_LANGUAGES_START -->
+<script>
+(function installEightLanguages(){
+"use strict";
+if(window.__studioEightLanguages)return;
+window.__studioEightLanguages=true;
+
+const codes=["zh-Hant","en","zh-Hans","ja","ko","es","fr","de"];
+const names=[
+ "繁體中文","English","简体中文","日本語",
+ "한국어","Español","Français","Deutsch"
+];
+const KEY="animation-studio-language-v2";
+let language="zh-Hant";
+try{
+ const saved=localStorage.getItem(KEY)||
+ localStorage.getItem("animation-studio-language-v1");
+ if(codes.includes(saved))language=saved;
+}catch(e){}
+
+const index=()=>codes.indexOf(language);
+const choose=a=>a[index()]??a[0];
+const dictionary=new Map();
+function row(original,...translations){
+ dictionary.set(original,[original,...translations]);
+}
+
+/*
+順序：
+繁體原文、英文、簡體、日文、韓文、西班牙文、法文、德文
+*/
+[
+["動畫與四向角色工作室","Animation & Character Studio","动画与四向角色工作室","アニメーション・キャラクタースタジオ","애니메이션·캐릭터 스튜디오","Estudio de animación y personajes","Studio d’animation et de personnages","Animations- und Charakterstudio"],
+["專案","Project","项目","プロジェクト","프로젝트","Proyecto","Projet","Projekt"],
+["影片抽格","Video Frames","视频抽帧","動画フレーム","동영상 프레임","Fotogramas de vídeo","Images vidéo","Videoframes"],
+["圖片影格","Image Frames","图片帧","画像フレーム","이미지 프레임","Fotogramas","Images","Bildframes"],
+["編輯","Edit","编辑","編集","편집","Editar","Modifier","Bearbeiten"],
+["圖層","Layers","图层","レイヤー","레이어","Capas","Calques","Ebenen"],
+["輸出","Export","导出","書き出し","내보내기","Exportar","Exporter","Export"],
+["四向角色","Character","四向角色","4方向キャラクター","4방향 캐릭터","Personaje","Personnage","Charakter"],
+["完整教學","Tutorial","完整教程","使い方","사용 안내","Tutorial","Tutoriel","Anleitung"],
+["使用說明","Instructions","使用说明","使い方","사용 안내","Instrucciones","Instructions","Anleitung"],
+["專案管理","Project Management","项目管理","プロジェクト管理","프로젝트 관리","Gestión de proyectos","Gestion des projets","Projektverwaltung"],
+["建立專案存檔","Build Project File","创建项目存档","保存ファイルを作成","프로젝트 파일 만들기","Crear archivo de proyecto","Créer le fichier du projet","Projektdatei erstellen"],
+["下載專案 JSON","Download Project JSON","下载项目 JSON","プロジェクトJSONを保存","프로젝트 JSON 다운로드","Descargar proyecto JSON","Télécharger le projet JSON","Projekt-JSON herunterladen"],
+["讀取專案","Load Project","读取项目","プロジェクトを開く","프로젝트 불러오기","Abrir proyecto","Charger un projet","Projekt laden"],
+["查看完整教學","View Tutorial","查看完整教程","使い方を見る","사용 안내 보기","Ver tutorial","Voir le tutoriel","Anleitung öffnen"],
+
+["1. 影片匯入與抽格","1. Import Video & Extract Frames","1. 导入视频与抽帧","1. 動画読み込み・フレーム抽出","1. 동영상 불러오기·프레임 추출","1. Importar vídeo y extraer fotogramas","1. Importer une vidéo et extraire des images","1. Video importieren und Frames extrahieren"],
+["2. 圖片匯入、排序與時間","2. Images, Order & Timing","2. 图片、排序与时间","2. 画像・順序・表示時間","2. 이미지·순서·시간","2. Imágenes, orden y duración","2. Images, ordre et durée","2. Bilder, Reihenfolge und Dauer"],
+["3. 去背、去字與剪裁","3. Remove, Erase & Crop","3. 去背景、擦除与裁剪","3. 背景除去・消去・切り抜き","3. 배경 제거·지우기·자르기","3. Quitar fondo, borrar y recortar","3. Détourer, effacer et recadrer","3. Freistellen, löschen und zuschneiden"],
+["4. 動畫與特效預覽","4. Animation & Effects Preview","4. 动画与特效预览","4. アニメーション・効果プレビュー","4. 애니메이션·효과 미리보기","4. Vista previa y efectos","4. Aperçu et effets","4. Animations- und Effektvorschau"],
+["5. 圖像、對話、字幕與旁白圖層","5. Images & Text Layers","5. 图像与文字图层","5. 画像・テキストレイヤー","5. 이미지·텍스트 레이어","5. Capas de imagen y texto","5. Calques d’image et de texte","5. Bild- und Textebenen"],
+["6. 動畫輸出","6. Animation Export","6. 动画导出","6. アニメーション書き出し","6. 애니메이션 내보내기","6. Exportar animación","6. Exporter l’animation","6. Animation exportieren"],
+["7. 四向多動作角色","7. Four-Direction Character Animations","7. 四向角色动画","7. 4方向キャラクターアニメーション","7. 4방향 캐릭터 애니메이션","7. Animaciones de personaje en cuatro direcciones","7. Animations de personnage dans quatre directions","7. Charakteranimationen in vier Richtungen"],
+
+["選取影片","Choose Video","选择视频","動画を選択","동영상 선택","Elegir vídeo","Choisir une vidéo","Video auswählen"],
+["開始秒數","Start (seconds)","开始秒数","開始（秒）","시작(초)","Inicio (segundos)","Début (secondes)","Start (Sekunden)"],
+["結束秒數","End (seconds)","结束秒数","終了（秒）","종료(초)","Fin (segundos)","Fin (secondes)","Ende (Sekunden)"],
+["設為目前起點","Set Start Here","设为当前起点","現在位置を開始に","현재 위치를 시작점으로","Fijar inicio aquí","Définir le début ici","Start hier setzen"],
+["設為目前終點","Set End Here","设为当前终点","現在位置を終了に","현재 위치를 종료점으로","Fijar fin aquí","Définir la fin ici","Ende hier setzen"],
+["使用目前位置","Use Current Position","使用当前位置","現在位置を使用","현재 위치 사용","Usar posición actual","Utiliser la position actuelle","Aktuelle Position verwenden"],
+["每秒擷取","Capture FPS","每秒提取","毎秒の抽出数","초당 추출 수","FPS de extracción","Images par seconde","Extraktions-FPS"],
+["長邊上限","Maximum Long Edge","长边上限","長辺の上限","긴 변 최대 크기","Lado largo máximo","Grand côté maximal","Maximale lange Seite"],
+["擷取並加入動畫影格","Extract & Append Frames","提取并添加帧","抽出してフレームを追加","추출 후 프레임 추가","Extraer y añadir fotogramas","Extraire et ajouter les images","Frames extrahieren und anhängen"],
+["尚未載入影片","No video loaded","尚未加载视频","動画未読み込み","불러온 동영상 없음","No hay vídeo cargado","Aucune vidéo chargée","Kein Video geladen"],
+["拖曳圖片到這裡，或點擊選取多張圖片","Drop images here, or click to select","拖入图片，或点击选择多张图片","画像をドロップ、またはクリックして選択","이미지를 놓거나 클릭하여 선택","Arrastra imágenes aquí o haz clic para elegir","Déposez des images ici ou cliquez pour choisir","Bilder hier ablegen oder zum Auswählen klicken"],
+["尚無影格","No frames","暂无帧","フレームなし","프레임 없음","Sin fotogramas","Aucune image","Keine Frames"],
+["← 往前","← Move Earlier","← 向前","← 前へ","← 앞으로","← Adelantar","← Avancer","← Nach vorne"],
+["往後 →","Move Later →","向后 →","後ろへ →","뒤로 →","Retrasar →","Reculer →","Nach hinten →"],
+["複製此格","Duplicate Frame","复制此帧","フレームを複製","프레임 복제","Duplicar fotograma","Dupliquer l’image","Frame duplizieren"],
+["刪除此格","Delete Frame","删除此帧","フレームを削除","프레임 삭제","Eliminar fotograma","Supprimer l’image","Frame löschen"],
+["清空動畫與圖層","Clear Animation & Layers","清空动画与图层","アニメーションとレイヤーを消去","애니메이션·레이어 비우기","Vaciar animación y capas","Vider l’animation et les calques","Animation und Ebenen leeren"],
+["此格時間","Frame Duration","此帧时间","フレーム時間","프레임 시간","Duración del fotograma","Durée de l’image","Framedauer"],
+["統一時間","Uniform Duration","统一时间","共通の表示時間","동일 시간","Duración uniforme","Durée uniforme","Einheitliche Dauer"],
+["毫秒","ms","毫秒","ミリ秒","밀리초","ms","ms","ms"],
+["格","frames","帧","コマ","프레임","fotogramas","images","Frames"],
+["套用此格","Apply to Frame","应用到此帧","このフレームに適用","현재 프레임에 적용","Aplicar al fotograma","Appliquer à l’image","Auf Frame anwenden"],
+["套用全部影格","Apply to All Frames","应用到全部帧","全フレームに適用","모든 프레임에 적용","Aplicar a todos","Appliquer à toutes les images","Auf alle Frames anwenden"],
+
+["規則圖集分割","Regular Sprite Sheet Slicing","规则图集切分","等間隔シート分割","규칙형 시트 분할","Dividir hoja regular","Découper une grille régulière","Regelmäßiges Sprite-Sheet teilen"],
+["橫向","Columns","横向","列数","열 수","Columnas","Colonnes","Spalten"],
+["縱向","Rows","纵向","行数","행 수","Filas","Lignes","Zeilen"],
+["由左至右，再往下","Left to Right, Then Down","从左到右，再向下","左から右、次に下","왼쪽에서 오른쪽, 다음 아래","De izquierda a derecha, luego abajo","De gauche à droite, puis vers le bas","Links nach rechts, dann nach unten"],
+["由上至下，再往右","Top to Bottom, Then Right","从上到下，再向右","上から下、次に右","위에서 아래, 다음 오른쪽","De arriba abajo, luego a la derecha","De haut en bas, puis à droite","Oben nach unten, dann nach rechts"],
+["外框留白","Outer Margin","外框留白","外側余白","바깥 여백","Margen exterior","Marge extérieure","Außenrand"],
+["水平間距","Horizontal Gap","水平间距","横の間隔","가로 간격","Separación horizontal","Espacement horizontal","Horizontaler Abstand"],
+["垂直間距","Vertical Gap","垂直间距","縦の間隔","세로 간격","Separación vertical","Espacement vertical","Vertikaler Abstand"],
+["略過全透明格","Skip Transparent Cells","跳过全透明帧","完全透明セルを除外","완전 투명 셀 제외","Omitir celdas transparentes","Ignorer les cellules transparentes","Transparente Zellen überspringen"],
+["預覽格線","Preview Grid","预览网格","グリッドを確認","격자 미리보기","Ver cuadrícula","Aperçu de la grille","Rastervorschau"],
+["分割目前圖片","Slice Selected Image","切分当前图片","選択画像を分割","선택 이미지 분할","Dividir imagen seleccionada","Découper l’image sélectionnée","Ausgewähltes Bild teilen"],
+
+["吸取背景色","Pick Background Color","吸取背景色","背景色を取得","배경색 추출","Tomar color de fondo","Prélever la couleur du fond","Hintergrundfarbe aufnehmen"],
+["橡皮擦","Eraser","橡皮擦","消しゴム","지우개","Borrador","Gomme","Radierer"],
+["框選去字","Erase Rectangle","框选擦除","矩形消去","사각형 지우기","Borrar rectángulo","Effacer un rectangle","Rechteck löschen"],
+["剪裁","Crop","裁剪","切り抜き","자르기","Recortar","Recadrer","Zuschneiden"],
+["背景色","Background Color","背景色","背景色","배경색","Color de fondo","Couleur du fond","Hintergrundfarbe"],
+["容差","Tolerance","容差","許容値","허용 오차","Tolerancia","Tolérance","Toleranz"],
+["去背","Remove Background","去背景","背景を除去","배경 제거","Quitar fondo","Supprimer le fond","Hintergrund entfernen"],
+["只去除邊緣連通背景","Edge-Connected Background Only","仅去除边缘连通背景","端につながる背景のみ","가장자리 연결 배경만","Solo fondo conectado al borde","Fond relié aux bords uniquement","Nur mit dem Rand verbundener Hintergrund"],
+["去背／去字／剪裁套用全部","Apply Removal / Erasing / Crop to All","去背景／擦除／裁剪应用到全部","背景除去・消去・切り抜きを全てに適用","배경 제거·지우기·자르기를 전체 적용","Aplicar eliminación, borrado y recorte a todos","Appliquer détourage, effacement et recadrage à toutes","Entfernen, Löschen und Zuschnitt auf alle anwenden"],
+["筆刷","Brush Size","笔刷","ブラシサイズ","브러시 크기","Tamaño del pincel","Taille du pinceau","Pinselgröße"],
+["復原此格","Undo Frame Edit","撤销此帧编辑","この編集を元に戻す","현재 프레임 편집 취소","Deshacer edición","Annuler la modification","Frame-Bearbeitung rückgängig"],
+["重設此格","Reset Frame","重置此帧","フレームをリセット","프레임 초기화","Restablecer fotograma","Réinitialiser l’image","Frame zurücksetzen"],
+
+["特效","Effect","特效","効果","효과","Efecto","Effet","Effekt"],
+["無","None","无","なし","없음","Ninguno","Aucun","Keiner"],
+["呼吸發光","Pulsing Glow","呼吸发光","明滅する光","맥동 발광","Resplandor pulsante","Lueur pulsée","Pulsierendes Leuchten"],
+["環繞火花","Orbiting Sparks","环绕火花","周回する火花","회전 불꽃","Chispas orbitales","Étincelles orbitales","Kreisende Funken"],
+["旋轉魔法陣","Rotating Magic Circle","旋转魔法阵","回転する魔法陣","회전 마법진","Círculo mágico giratorio","Cercle magique tournant","Rotierender Zauberkreis"],
+["速度線","Speed Lines","速度线","スピード線","속도선","Líneas de velocidad","Lignes de vitesse","Geschwindigkeitslinien"],
+["強度","Intensity","强度","強度","강도","Intensidad","Intensité","Stärke"],
+["單張特效","Single-Image Effect","单张特效","単一画像の効果","단일 이미지 효과","Efecto de imagen única","Effet sur image unique","Einzelbildeffekt"],
+["正向","Forward","正向","順方向","정방향","Adelante","Normal","Vorwärts"],
+["反向","Reverse","反向","逆方向","역방향","Inverso","Inversé","Rückwärts"],
+["來回","Ping-Pong","往返","往復","왕복","Ida y vuelta","Aller-retour","Hin und zurück"],
+["播放","Play","播放","再生","재생","Reproducir","Lire","Abspielen"],
+["暫停","Pause","暂停","一時停止","일시 정지","Pausar","Pause","Pause"],
+["上一格","Previous Frame","上一帧","前のフレーム","이전 프레임","Fotograma anterior","Image précédente","Vorheriger Frame"],
+["下一格","Next Frame","下一帧","次のフレーム","다음 프레임","Fotograma siguiente","Image suivante","Nächster Frame"],
+
+["＋ 圖像","+ Image","＋ 图像","＋ 画像","＋ 이미지","+ Imagen","+ Image","+ Bild"],
+["＋ 對話氣泡","+ Speech Bubble","＋ 对话气泡","＋ 吹き出し","＋ 말풍선","+ Bocadillo","+ Bulle de dialogue","+ Sprechblase"],
+["＋ 對白字幕","+ Subtitle","＋ 对白字幕","＋ 字幕","＋ 자막","+ Subtítulo","+ Sous-titre","+ Untertitel"],
+["＋ 自述旁白","+ Narration","＋ 自述旁白","＋ ナレーション","＋ 내레이션","+ Narración","+ Narration","+ Erzähltext"],
+["尚無圖層","No layers","暂无图层","レイヤーなし","레이어 없음","Sin capas","Aucun calque","Keine Ebenen"],
+["下移","Move Back","下移","背面へ","뒤로 이동","Enviar atrás","Reculer","Nach hinten"],
+["上移","Move Forward","上移","前面へ","앞으로 이동","Traer adelante","Avancer","Nach vorne"],
+["複製","Duplicate","复制","複製","복제","Duplicar","Dupliquer","Duplizieren"],
+["刪除","Delete","删除","削除","삭제","Eliminar","Supprimer","Löschen"],
+["顯示範圍","Visibility","显示范围","表示範囲","표시 범위","Visibilidad","Visibilité","Sichtbarkeit"],
+["全部","All","全部","すべて","전체","Todos","Toutes","Alle"],
+["指定單格","One Frame","指定单帧","指定フレーム","지정 프레임","Un fotograma","Une image","Ein Frame"],
+["影格區間","Frame Range","帧区间","フレーム範囲","프레임 범위","Rango de fotogramas","Plage d’images","Framebereich"],
+["綁定目前影格","Bind to Selected Frame","绑定当前帧","選択フレームに固定","선택 프레임에 연결","Vincular al fotograma","Lier à l’image sélectionnée","An ausgewählten Frame binden"],
+["第","Frame","第","フレーム","프레임","Fotograma","Image","Frame"],
+["格至","to","帧至","から","부터","a","à","bis"],
+["角色名稱","Speaker Name","角色名称","話者名","화자 이름","Nombre del hablante","Nom du locuteur","Sprechername"],
+["可留白","Optional","可留空","省略可","선택 사항","Opcional","Facultatif","Optional"],
+["黑體","Sans Serif","黑体","ゴシック体","고딕체","Sin serifa","Sans empattement","Serifenlos"],
+["明體","Serif","宋体","明朝体","명조체","Con serifa","Avec empattement","Serifenschrift"],
+["粗體","Bold","粗体","太字","굵게","Negrita","Gras","Fett"],
+["靠左","Left","靠左","左寄せ","왼쪽 정렬","Izquierda","Gauche","Links"],
+["置中","Center","居中","中央","가운데","Centro","Centré","Zentriert"],
+["靠右","Right","靠右","右寄せ","오른쪽 정렬","Derecha","Droite","Rechts"],
+["文字色","Text Color","文字色","文字色","텍스트 색","Color del texto","Couleur du texte","Textfarbe"],
+["框底／描邊","Fill / Outline","填充／描边","塗り／縁取り","채우기／윤곽선","Relleno / Contorno","Fond / Contour","Füllung / Kontur"],
+["相對字級","Relative Font Size","相对字号","相対文字サイズ","상대 글자 크기","Tamaño relativo","Taille relative","Relative Schriftgröße"],
+["水平","Horizontal","水平","横位置","가로 위치","Horizontal","Horizontal","Horizontal"],
+["垂直","Vertical","垂直","縦位置","세로 위치","Vertical","Vertical","Vertikal"],
+["寬度","Width","宽度","幅","너비","Anchura","Largeur","Breite"],
+["不透明度","Opacity","不透明度","不透明度","불투명도","Opacidad","Opacité","Deckkraft"],
+["圖像","Image","图像","画像","이미지","Imagen","Image","Bild"],
+["對話氣泡","Speech Bubble","对话气泡","吹き出し","말풍선","Bocadillo","Bulle de dialogue","Sprechblase"],
+["對白字幕","Subtitle","对白字幕","字幕","자막","Subtítulo","Sous-titre","Untertitel"],
+["自述旁白","Narration","自述旁白","ナレーション","내레이션","Narración","Narration","Erzähltext"],
+
+["解析度","Resolution","分辨率","解像度","해상도","Resolución","Résolution","Auflösung"],
+["自訂","Custom","自定义","カスタム","사용자 지정","Personalizada","Personnalisée","Benutzerdefiniert"],
+["4K 橫式","4K Landscape","4K 横向","4K 横長","4K 가로","4K horizontal","4K paysage","4K Querformat"],
+["4K 直式","4K Portrait","4K 纵向","4K 縦長","4K 세로","4K vertical","4K portrait","4K Hochformat"],
+["寬","Width","宽","幅","너비","Ancho","Largeur","Breite"],
+["高","Height","高","高さ","높이","Alto","Hauteur","Höhe"],
+["使用目前影格尺寸","Use Selected Frame Size","使用当前帧尺寸","選択フレームのサイズ","선택 프레임 크기 사용","Usar tamaño del fotograma","Utiliser la taille de l’image","Größe des ausgewählten Frames"],
+["主體大小","Subject Scale","主体大小","被写体サイズ","대상 크기","Escala del sujeto","Échelle du sujet","Motivgröße"],
+["透明背景","Transparent Background","透明背景","透明背景","투명 배경","Fondo transparente","Fond transparent","Transparenter Hintergrund"],
+["純色背景","Solid Background","纯色背景","単色背景","단색 배경","Fondo sólido","Fond uni","Einfarbiger Hintergrund"],
+["像素風","Pixel Art","像素风","ピクセルアート","픽셀 아트","Pixel art","Pixel art","Pixel-Art"],
+["GIF 透明門檻","GIF Alpha Threshold","GIF 透明阈值","GIF透明度しきい値","GIF 투명도 임계값","Umbral alfa GIF","Seuil alpha GIF","GIF-Transparenzschwelle"],
+["生成 GIF","Generate GIF","生成 GIF","GIFを作成","GIF 생성","Crear GIF","Créer le GIF","GIF erstellen"],
+["下載 GIF","Download GIF","下载 GIF","GIFを保存","GIF 다운로드","Descargar GIF","Télécharger le GIF","GIF herunterladen"],
+["生成目前畫面 PNG","Generate Current Frame PNG","生成当前画面 PNG","現在の画像をPNG化","현재 화면 PNG 생성","Crear PNG actual","Créer le PNG actuel","Aktuelles Bild als PNG erstellen"],
+["下載 PNG","Download PNG","下载 PNG","PNGを保存","PNG 다운로드","Descargar PNG","Télécharger le PNG","PNG herunterladen"],
+["生成無聲 WebM","Generate Silent WebM","生成无声 WebM","無音WebMを作成","무음 WebM 생성","Crear WebM sin audio","Créer un WebM sans son","Stummes WebM erstellen"],
+["下載 WebM","Download WebM","下载 WebM","WebMを保存","WebM 다운로드","Descargar WebM","Télécharger le WebM","WebM herunterladen"],
+["圖集每列","Sheet Columns","图集每行","シート列数","시트 열 수","Columnas de la hoja","Colonnes de la planche","Sheet-Spalten"],
+["生成動畫 PNG 圖集","Generate PNG Sprite Sheet","生成 PNG 动画图集","PNGスプライトシート作成","PNG 스프라이트 시트 생성","Crear hoja PNG","Créer une planche PNG","PNG-Sprite-Sheet erstellen"],
+["下載動畫圖集","Download Sprite Sheet","下载动画图集","シートを保存","시트 다운로드","Descargar hoja","Télécharger la planche","Sprite-Sheet herunterladen"],
+
+["方向","Direction","方向","方向","방향","Dirección","Direction","Richtung"],
+["動作","Animation","动作","動作","동작","Animación","Animation","Animation"],
+["正面／向下","Front / Down","正面／向下","正面／下","정면／아래","Frente / Abajo","Face / Bas","Vorne / Unten"],
+["背面／向上","Back / Up","背面／向上","背面／上","후면／위","Espalda / Arriba","Dos / Haut","Hinten / Oben"],
+["左側／向左","Left / Leftward","左侧／向左","左側／左","왼쪽／좌측","Izquierda","Gauche","Links"],
+["右側／向右","Right / Rightward","右侧／向右","右側／右","오른쪽／우측","Derecha","Droite","Rechts"],
+["正面","Front","正面","正面","정면","Frente","Face","Vorne"],
+["背面","Back","背面","背面","후면","Espalda","Dos","Hinten"],
+["左側","Left","左侧","左側","왼쪽","Izquierda","Gauche","Links"],
+["右側","Right","右侧","右側","오른쪽","Derecha","Droite","Rechts"],
+["待機","Idle","待机","待機","대기","Reposo","Repos","Stand"],
+["走路","Walk","走路","歩行","걷기","Caminar","Marche","Gehen"],
+["奔跑","Run","奔跑","走行","달리기","Correr","Course","Laufen"],
+["設定此方向","Set Up Direction","设置此方向","この方向を設定","이 방향 설정","Configurar dirección","Configurer cette direction","Richtung einrichten"],
+["匯入這組動作圖片","Import Animation Images","导入这组动作图片","動作画像を読み込む","동작 이미지 불러오기","Importar imágenes de animación","Importer les images d’animation","Animationsbilder importieren"],
+["加入目前動畫影格","Add Selected Animation Frame","添加当前动画帧","選択フレームを追加","선택 애니메이션 프레임 추가","Añadir fotograma seleccionado","Ajouter l’image sélectionnée","Ausgewählten Frame hinzufügen"],
+["加入全部動畫影格","Add All Animation Frames","添加全部动画帧","全アニメーションフレームを追加","모든 애니메이션 프레임 추가","Añadir todos los fotogramas","Ajouter toutes les images","Alle Animationsframes hinzufügen"],
+["清空這組","Clear This Animation","清空这组","この動作を消去","이 동작 비우기","Vaciar esta animación","Vider cette animation","Diese Animation leeren"],
+["每格時間","Frame Duration","每帧时间","フレーム時間","프레임 시간","Duración del fotograma","Durée de l’image","Framedauer"],
+["畫格寬","Cell Width","画格宽","セル幅","셀 너비","Ancho de celda","Largeur de cellule","Zellenbreite"],
+["腳底對齊","Bottom Alignment","底部对齐","下端揃え","하단 정렬","Alinear abajo","Aligner en bas","Unten ausrichten"],
+["中央對齊","Center Alignment","居中对齐","中央揃え","가운데 정렬","Alinear al centro","Centrer","Zentriert ausrichten"],
+["忽略透明留白","Ignore Transparent Padding","忽略透明留白","透明余白を無視","투명 여백 무시","Ignorar margen transparente","Ignorer les marges transparentes","Transparente Ränder ignorieren"],
+["這組大小","Animation Scale","这组大小","動作の拡大率","동작 크기","Escala de animación","Échelle de l’animation","Animationsskalierung"],
+["水平微調","Horizontal Offset","水平微调","横オフセット","가로 오프셋","Desplazamiento horizontal","Décalage horizontal","Horizontaler Versatz"],
+["垂直微調","Vertical Offset","垂直微调","縦オフセット","세로 오프셋","Desplazamiento vertical","Décalage vertical","Vertikaler Versatz"],
+["重設這組位置","Reset Alignment","重置这组位置","位置をリセット","정렬 초기화","Restablecer alineación","Réinitialiser l’alignement","Ausrichtung zurücksetzen"],
+["預覽目前動作","Preview Animation","预览当前动作","動作をプレビュー","동작 미리보기","Ver animación","Aperçu de l’animation","Animation ansehen"],
+["啟用鍵盤操控","Enable Keyboard Control","启用键盘控制","キーボード操作を有効化","키보드 조작 활성화","Activar control por teclado","Activer le contrôle clavier","Tastatursteuerung aktivieren"],
+["回到中央","Return to Center","回到中央","中央に戻す","중앙으로 이동","Volver al centro","Revenir au centre","Zur Mitte zurück"],
+["顯示尺寸","Display Size","显示尺寸","表示サイズ","표시 크기","Tamaño de visualización","Taille d’affichage","Anzeigegröße"],
+["速度","Movement Speed","速度","移動速度","이동 속도","Velocidad","Vitesse","Geschwindigkeit"],
+["奔跑倍率","Run Multiplier","奔跑倍率","走行倍率","달리기 배율","Multiplicador de carrera","Multiplicateur de course","Laufmultiplikator"],
+["方向按鈕使用奔跑","Run with Direction Buttons","方向按钮使用奔跑","方向ボタンで走る","방향 버튼으로 달리기","Correr con botones de dirección","Courir avec les boutons directionnels","Mit Richtungstasten laufen"],
+["四向排列","Direction Layout","四向排列","方向の配置","방향 배치","Distribución de direcciones","Disposition des directions","Richtungsanordnung"],
+["橫排 4 × 1","Horizontal 4 × 1","横排 4 × 1","横一列 4 × 1","가로 4 × 1","Horizontal 4 × 1","Horizontal 4 × 1","Horizontal 4 × 1"],
+["方格 2 × 2","Grid 2 × 2","方格 2 × 2","グリッド 2 × 2","격자 2 × 2","Cuadrícula 2 × 2","Grille 2 × 2","Raster 2 × 2"],
+["生成四向 PNG","Generate Four-Direction PNG","生成四向 PNG","4方向PNGを作成","4방향 PNG 생성","Crear PNG de cuatro direcciones","Créer le PNG à quatre directions","Vier-Richtungs-PNG erstellen"],
+["下載四向圖集","Download Direction Sheet","下载四向图集","4方向シートを保存","방향 시트 다운로드","Descargar hoja de direcciones","Télécharger la planche des directions","Richtungs-Sheet herunterladen"],
+["動作圖集每列","Animation Sheet Columns","动作图集每行","動作シート列数","동작 시트 열 수","Columnas de animación","Colonnes d’animation","Animationsspalten"],
+["生成目前動作 PNG 圖集","Generate Selected Animation Sheet","生成当前动作 PNG 图集","選択動作のシートを作成","선택 동작 시트 생성","Crear hoja de la animación actual","Créer la planche de l’animation actuelle","Sheet der gewählten Animation erstellen"],
+["下載動作圖集","Download Animation Sheet","下载动作图集","動作シートを保存","동작 시트 다운로드","Descargar hoja de animación","Télécharger la planche d’animation","Animations-Sheet herunterladen"],
+["複製目前動作到動畫區","Copy Animation to Editor","复制当前动作到动画区","現在の動作を編集領域へコピー","현재 동작을 편집기로 복사","Copiar animación al editor","Copier l’animation vers l’éditeur","Animation in den Editor kopieren"],
+["取消目前工作","Cancel Current Task","取消当前任务","現在の処理を中止","현재 작업 취소","Cancelar tarea","Annuler la tâche","Aktuelle Aufgabe abbrechen"]
+].forEach(r=>row(...r));
+
+/* 舊版介面文字別名 */
+const aliases={
+ "1. 影片匯入與動作擷取":"1. 影片匯入與抽格",
+ "2. 圖片、排序與逐格時間":"2. 圖片匯入、排序與時間",
+ "5. 圖像、對話、字幕與旁白":"5. 圖像、對話、字幕與旁白圖層",
+ "6. 動畫與圖集輸出":"6. 動畫輸出",
+ "7. 四向圖片與多動作角色":"7. 四向多動作角色",
+ "選取影片（不限副檔名）":"選取影片",
+ "目前影格時間":"此格時間",
+ "清空動畫與疊加圖層":"清空動畫與圖層",
+ "多動作圖片分割":"規則圖集分割",
+ "單張特效動畫":"單張特效",
+ "字級":"相對字級",
+ "動畫圖集每列":"圖集每列",
+ "下載影片":"下載 WebM",
+ "這組每格":"每格時間",
+ "画格寬":"畫格寬",
+ "脚底對齊":"腳底對齊",
+ "對白旁白":"圖層",
+ "全部影格":"全部",
+ "組別預覽":"預覽目前動作",
+ "角色操控":"啟用鍵盤操控"
+};
+
+const ui={
+ help:["完整使用教學","Complete Tutorial","完整使用教程","使い方ガイド","전체 사용 안내","Guía de uso","Guide d’utilisation","Bedienungsanleitung"],
+ expand:["展開全部","Expand All","展开全部","すべて開く","모두 펼치기","Expandir todo","Tout développer","Alle öffnen"],
+ collapse:["收合全部","Collapse All","收起全部","すべて閉じる","모두 접기","Contraer todo","Tout réduire","Alle schließen"],
+ ready:[
+  "八語介面已啟用。請先保存專案，再關閉頁面。",
+  "Eight-language interface enabled. Save your project before closing.",
+  "八语界面已启用。关闭页面前请保存项目。",
+  "8言語に対応しました。閉じる前にプロジェクトを保存してください。",
+  "8개 언어가 활성화되었습니다. 닫기 전에 프로젝트를 저장하세요.",
+  "Interfaz de ocho idiomas activada. Guarda el proyecto antes de cerrar.",
+  "Interface en huit langues activée. Enregistrez le projet avant de fermer.",
+  "Achtsprachige Oberfläche aktiviert. Projekt vor dem Schließen speichern."
+ ],
+ missing:[
+  "缺少此方向／動作圖片","Missing direction / animation images",
+  "缺少此方向／动作图片","この方向・動作の画像がありません",
+  "이 방향·동작 이미지가 없습니다","Faltan imágenes de esta dirección o animación",
+  "Images manquantes pour cette direction ou animation","Bilder für Richtung oder Animation fehlen"
+ ],
+ controls:[
+  "方向鍵／WASD：走路　Shift：奔跑　放開：待機",
+  "Arrows / WASD: walk   Shift: run   Release: idle",
+  "方向键／WASD：走路　Shift：奔跑　松开：待机",
+  "矢印／WASD：歩行　Shift：走行　離す：待機",
+  "방향키／WASD: 걷기　Shift: 달리기　놓기: 대기",
+  "Flechas / WASD: caminar   Shift: correr   Soltar: reposo",
+  "Flèches / WASD : marcher   Shift : courir   Relâcher : repos",
+  "Pfeile / WASD: gehen   Shift: laufen   Loslassen: Stand"
+ ]
+};
+dictionary.set("缺少此方向／動作圖片",ui.missing);
+dictionary.set("方向鍵／WASD：走路　Shift：奔跑　放開：待機",ui.controls);
+dictionary.set("方向鍵／WASD 走路，Shift 奔跑，放開回待機。",ui.controls);
+
+/* 常用訊息 */
+[
+["請先加入動畫影格。","Add animation frames first.","请先添加动画帧。","先にフレームを追加してください。","먼저 애니메이션 프레임을 추가하세요.","Añade primero fotogramas.","Ajoutez d’abord des images.","Zuerst Animationsframes hinzufügen."],
+["請先載入影片。","Load a video first.","请先加载视频。","先に動画を読み込んでください。","먼저 동영상을 불러오세요.","Carga primero un vídeo.","Chargez d’abord une vidéo.","Zuerst ein Video laden."],
+["結束時間必須大於開始時間。","End time must be later than start time.","结束时间必须大于开始时间。","終了は開始より後にしてください。","종료 시간은 시작 시간보다 늦어야 합니다.","El final debe ser posterior al inicio.","La fin doit être après le début.","Das Ende muss nach dem Start liegen."],
+["目前角色動作沒有圖片。","This animation has no images.","当前角色动作没有图片。","この動作には画像がありません。","이 동작에 이미지가 없습니다.","Esta animación no tiene imágenes.","Cette animation ne contient aucune image.","Diese Animation enthält keine Bilder."],
+["PNG 完成，請按下載。","PNG ready. Click Download.","PNG 已完成，请点击下载。","PNG作成完了。保存してください。","PNG 생성 완료. 다운로드하세요.","PNG listo. Pulsa Descargar.","PNG prêt. Cliquez sur Télécharger.","PNG fertig. Auf Herunterladen klicken."],
+["專案已建立，請再按「下載專案 JSON」。","Project ready. Click Download Project JSON.","项目已创建，请再点击下载项目 JSON。","作成完了。プロジェクトJSONを保存してください。","프로젝트 준비 완료. JSON을 다운로드하세요.","Proyecto listo. Descarga el JSON.","Projet prêt. Téléchargez le JSON.","Projekt bereit. Projekt-JSON herunterladen."],
+["已取消工作。","Task cancelled.","已取消任务。","処理を中止しました。","작업이 취소되었습니다.","Tarea cancelada.","Tâche annulée.","Aufgabe abgebrochen."],
+["載入 GIF 編碼套件…","Loading GIF encoder…","正在加载 GIF 编码库…","GIFエンコーダーを読み込み中…","GIF 인코더 로딩 중…","Cargando codificador GIF…","Chargement de l’encodeur GIF…","GIF-Encoder wird geladen…"],
+["清空動畫影格與疊加圖層？角色素材會保留。","Clear animation frames and layers? Character assets will be kept.","清空动画帧与叠加图层？角色素材将保留。","フレームとレイヤーを消去しますか？キャラクター素材は残ります。","프레임과 레이어를 비울까요? 캐릭터 소재는 유지됩니다.","¿Vaciar fotogramas y capas? Se conservarán los personajes.","Vider les images et les calques ? Les personnages seront conservés.","Frames und Ebenen leeren? Charakterbilder bleiben erhalten."],
+["分割將取代目前圖片，不能復原。繼續？","Slicing replaces the image and cannot be undone. Continue?","切分将替换当前图片且无法撤销。继续？","分割は元画像を置き換え、元に戻せません。続けますか？","분할하면 이미지가 교체되며 되돌릴 수 없습니다. 계속할까요?","La división sustituye la imagen y no se puede deshacer. ¿Continuar?","Le découpage remplace l’image et ne peut pas être annulé. Continuer ?","Teilen ersetzt das Bild und kann nicht rückgängig gemacht werden. Fortfahren?"],
+["清空目前方向的這組動作？","Clear this direction’s animation?","清空当前方向的这组动作？","この方向の動作を消去しますか？","현재 방향의 동작을 비울까요?","¿Vaciar esta animación?","Vider cette animation ?","Diese Richtungsanimation leeren?"],
+["讀取將取代目前動畫、圖層、角色素材與設定。已保存目前內容嗎？","Loading replaces the current animation, layers, character assets and settings. Have you saved your work?","读取将替换当前动画、图层、角色素材与设置。已保存当前内容吗？","読み込むと現在の内容と設定が置き換わります。保存しましたか？","불러오면 현재 애니메이션, 레이어, 캐릭터 및 설정이 교체됩니다. 저장했나요?","La carga reemplazará la animación, capas, personajes y ajustes. ¿Has guardado?","Le chargement remplacera l’animation, les calques, les personnages et les réglages. Avez-vous enregistré ?","Laden ersetzt Animation, Ebenen, Charakterbilder und Einstellungen. Haben Sie gespeichert?"]
+].forEach(r=>row(...r));
+
+aliases["分割將取代目前圖片，不可復原。繼續？"]="分割將取代目前圖片，不能復原。繼續？";
+aliases["PNG 完成，請點下載。"]="PNG 完成，請按下載。";
+aliases["載入 GIF 套件…"]="載入 GIF 編碼套件…";
+aliases["專案已建立，請按「下載專案 JSON」。"]="專案已建立，請再按「下載專案 JSON」。";
+
+/*
+八語教學。
+每個主題同時用於該區的簡短說明，避免遺漏安全限制。
+*/
+const guides=[
+{
+ id:"project",
+ title:["專案保存","Saving Projects","项目保存","プロジェクト保存","프로젝트 저장","Guardar proyectos","Enregistrer les projets","Projekte speichern"],
+ body:[
+ "先建立專案，再下載 JSON；沒有自動儲存。讀取會取代目前內容。保存影格、圖層與角色設定，不保存原始影片及復原紀錄。請使用原工具支援的專案版本。",
+ "Build the project file, then download JSON. There is no autosave. Loading replaces current content. Frames, layers and character settings are saved; the original video and undo history are not. Use the project version supported by your original tool.",
+ "先创建项目，再下载 JSON；没有自动保存。读取会替换当前内容。保存帧、图层与角色设置，不保存原始视频和撤销记录。请使用原工具支持的项目版本。",
+ "保存ファイルを作成してからJSONをダウンロードします。自動保存はありません。読み込みは現在の内容を置き換えます。フレーム、レイヤー、キャラクター設定を保存しますが、元動画と操作履歴は保存しません。元ツール対応の形式を使用してください。",
+ "프로젝트 파일을 만든 뒤 JSON을 다운로드하세요. 자동 저장은 없습니다. 불러오면 현재 내용이 교체됩니다. 프레임, 레이어, 캐릭터 설정은 저장되지만 원본 동영상과 실행 취소 기록은 저장되지 않습니다. 원래 도구가 지원하는 프로젝트 버전을 사용하세요.",
+ "Crea el archivo del proyecto y descarga el JSON. No hay guardado automático. Cargar sustituye el contenido actual. Se guardan fotogramas, capas y ajustes del personaje, pero no el vídeo original ni el historial. Usa la versión de proyecto compatible con tu herramienta.",
+ "Créez le fichier du projet, puis téléchargez le JSON. Il n’y a pas de sauvegarde automatique. Le chargement remplace le contenu actuel. Images, calques et réglages du personnage sont enregistrés, mais pas la vidéo d’origine ni l’historique. Utilisez la version de projet prise en charge.",
+ "Projektdatei erstellen und anschließend JSON herunterladen. Es gibt keine automatische Speicherung. Laden ersetzt den aktuellen Inhalt. Frames, Ebenen und Charaktereinstellungen werden gespeichert, Originalvideo und Rückgängig-Verlauf jedoch nicht. Verwenden Sie die unterstützte Projektversion."
+ ]
+},
+{
+ id:"videoSection",
+ title:["影片抽格","Extracting Video Frames","视频抽帧","動画フレーム抽出","동영상 프레임 추출","Extraer fotogramas","Extraire les images vidéo","Videoframes extrahieren"],
+ body:[
+ "選取影片並設定起點與終點。第一次建議 2～3 秒、每秒 10 格、長邊 720。影格追加到現有動畫後，不保留聲音。只能處理瀏覽器可解碼的影片；無法播放時轉成 MP4（H.264）。這不是動作遷移。",
+ "Choose a video and set start and end times. Begin with 2–3 seconds, 10 FPS and a 720 px long edge. Frames are appended without audio. Only browser-decodable video is supported; convert to MP4 (H.264) if needed. This is not motion transfer.",
+ "选择视频并设置起点和终点。首次建议 2～3 秒、每秒 10 帧、长边 720。帧添加到现有动画后，不保留声音。仅支持浏览器可解码的视频；无法播放时转成 MP4（H.264）。这不是动作迁移。",
+ "動画を選び開始・終了時間を設定します。最初は2～3秒、毎秒10コマ、長辺720を推奨します。フレームは末尾に追加され、音声は含みません。再生できない場合はMP4（H.264）に変換してください。別キャラクターへの動作転送ではありません。",
+ "동영상을 선택하고 시작·종료 시간을 설정하세요. 처음에는 2~3초, 초당 10프레임, 긴 변 720을 권장합니다. 프레임은 뒤에 추가되고 소리는 포함되지 않습니다. 재생되지 않으면 MP4(H.264)로 변환하세요. 다른 캐릭터로 동작을 옮기는 기능은 아닙니다.",
+ "Elige un vídeo y define inicio y fin. Empieza con 2–3 segundos, 10 FPS y lado largo de 720 px. Los fotogramas se añaden sin audio. Solo se admiten vídeos decodificables por el navegador; conviértelos a MP4 (H.264) si hace falta. No transfiere movimientos a otro personaje.",
+ "Choisissez une vidéo et définissez le début et la fin. Commencez par 2–3 secondes, 10 images/s et un grand côté de 720 px. Les images sont ajoutées sans audio. Convertissez les vidéos incompatibles en MP4 (H.264). Il ne s’agit pas d’un transfert de mouvement.",
+ "Video wählen und Start sowie Ende festlegen. Beginnen Sie mit 2–3 Sekunden, 10 FPS und 720 px langer Kante. Frames werden ohne Ton angehängt. Nicht unterstützte Videos in MP4 (H.264) umwandeln. Dies überträgt keine Bewegungen auf andere Charaktere."
+ ]
+},
+{
+ id:"imageSection",
+ title:["图片、分割與時間","Images, Slicing & Timing","图片、切分与时间","画像・分割・時間","이미지·분할·시간","Imágenes, división y duración","Images, découpage et durée","Bilder, Teilung und Dauer"],
+ body:[
+ "匯入連續圖片後排列順序。100 毫秒約每秒 10 格；時間越短播放越快。圖集橫向填每列格數，縱向填總列數，先预覽格線再分割。分割取代原圖且不能復原。動畫 GIF／WebP 匯入不會自動拆幀。",
+ "Import sequential images and arrange their order. 100 ms is approximately 10 FPS; shorter durations play faster. For sheets, set columns and rows, then preview the grid before slicing. Slicing replaces the image and cannot be undone. Animated GIF/WebP imports are not automatically split into frames.",
+ "导入连续图片后排列顺序。100 毫秒约每秒 10 帧；时间越短播放越快。图集横向填写每行格数，纵向填写总行数，先预览网格再切分。切分替换原图且无法撤销。动画 GIF／WebP 导入不会自动拆帧。",
+ "連続画像を読み込み、順番を並べます。100ミリ秒は約10FPSです。シートは列数と行数を指定し、グリッド確認後に分割します。分割は元画像を置き換え、元に戻せません。GIF/WebPアニメーションの自動コマ分解はありません。",
+ "연속 이미지를 불러오고 순서를 정하세요. 100밀리초는 약 10FPS이며 짧을수록 빠릅니다. 시트의 열·행 수를 설정하고 격자를 확인한 뒤 분할하세요. 분할은 이미지를 교체하며 취소할 수 없습니다. GIF/WebP 애니메이션은 자동으로 분해되지 않습니다.",
+ "Importa imágenes secuenciales y ordénalas. 100 ms equivalen aproximadamente a 10 FPS. Configura columnas y filas de la hoja y comprueba la cuadrícula antes de dividir. La división sustituye la imagen y no se puede deshacer. Los GIF/WebP animados no se separan automáticamente.",
+ "Importez des images séquentielles et ordonnez-les. 100 ms correspondent à environ 10 images/s. Définissez les colonnes et lignes, puis vérifiez la grille avant de découper. Le découpage remplace l’image sans annulation possible. Les GIF/WebP animés ne sont pas séparés automatiquement.",
+ "Bildfolge importieren und anordnen. 100 ms entsprechen ungefähr 10 FPS. Spalten und Zeilen festlegen und das Raster vor dem Teilen prüfen. Teilen ersetzt das Bild und ist nicht rückgängig zu machen. Animierte GIF/WebP-Dateien werden nicht automatisch zerlegt."
+ ]
+},
+{
+ id:"editSection",
+ title:["去背、去字與剪裁","Remove, Erase & Crop","去背景、擦除与裁剪","背景除去・消去・切り抜き","배경 제거·지우기·자르기","Quitar fondo, borrar y recortar","Détourer, effacer et recadrer","Freistellen, löschen und zuschneiden"],
+ body:[
+ "吸取背景色後去背；建議使用邊緣連通模式。誤刪時復原並降低容差。去字只擦成透明，不補回被遮住的內容。橡皮擦只改目前影格。批次剪裁與框選依相對位置套用，每格只保留最近一次影像編輯復原。",
+ "Sample the background color, then remove it; edge-connected mode is recommended. Undo and reduce tolerance if needed. Erasing makes pixels transparent without reconstructing hidden content. The eraser affects one frame. Batch rectangle edits use relative positions. Each frame retains one image-edit undo step.",
+ "吸取背景色后去背景；建议使用边缘连通模式。误删时撤销并降低容差。去字仅擦成透明，不补回被遮挡的内容。橡皮擦只修改当前帧。批量裁剪与框选按相对位置应用，每帧仅保留最近一次图像编辑撤销。",
+ "背景色を取得して除去します。端につながる背景のみのモードを推奨します。誤消去時は元に戻し許容値を下げます。消去は透明化のみで、隠れた内容を補完しません。消しゴムは選択フレームのみです。一括処理は相対位置を使い、画像編集の取り消しは各フレーム1回分です。",
+ "배경색을 추출한 뒤 제거하세요. 가장자리 연결 모드를 권장합니다. 잘못 지워지면 취소하고 허용 오차를 낮추세요. 지우기는 투명하게 만들 뿐 가려진 내용을 복원하지 않습니다. 지우개는 현재 프레임만 수정합니다. 일괄 작업은 상대 위치를 사용하며 프레임마다 한 단계만 취소할 수 있습니다.",
+ "Toma el color de fondo y elimínalo; se recomienda el modo conectado al borde. Si se borra demasiado, deshaz y reduce la tolerancia. Borrar crea transparencia, no reconstruye contenido. El borrador afecta a un fotograma. Las operaciones por lote usan posiciones relativas y conservan un paso de deshacer por fotograma.",
+ "Prélevez la couleur du fond puis supprimez-le ; le mode relié aux bords est conseillé. En cas d’erreur, annulez et réduisez la tolérance. Effacer crée de la transparence sans reconstruire le contenu. La gomme agit sur une image. Le traitement par lot utilise des positions relatives, avec une annulation par image.",
+ "Hintergrundfarbe aufnehmen und entfernen; der randverbundene Modus wird empfohlen. Bei Fehlern rückgängig machen und Toleranz senken. Löschen erzeugt Transparenz, rekonstruiert aber nichts. Der Radierer betrifft einen Frame. Stapelbearbeitung nutzt relative Positionen. Pro Frame bleibt ein Bildbearbeitungsschritt rückgängig machbar."
+ ]
+},
+{
+ id:"layerSection",
+ title:["圖層、對白與特效","Layers, Dialogue & Effects","图层、对白与特效","レイヤー・字幕・効果","레이어·대사·효과","Capas, diálogo y efectos","Calques, dialogue et effets","Ebenen, Dialoge und Effekte"],
+ body:[
+ "新增圖像、氣泡、字幕或旁白後，調整位置、寬度、字級與透明度。圖層顯示在動畫預覽，不直接修改原圖。可顯示全部、綁定單格或指定區間。旁白無語音。單張素材特效不會生成新姿勢。語言切換不翻譯您輸入的文字。",
+ "Add images, speech bubbles, subtitles or narration and adjust position, width, font size and opacity. Layers appear in the animation preview, not on the source image. Display them on all frames, one bound frame or a range. Narration has no audio. Effects do not create new poses. Language switching does not translate your text.",
+ "新增图像、气泡、字幕或旁白后，调整位置、宽度、字号与透明度。图层显示在动画预览中，不直接修改原图。可显示全部、绑定单帧或指定区间。旁白无语音。单张素材特效不会生成新姿势。语言切换不翻译您输入的文字。",
+ "画像、吹き出し、字幕、ナレーションを追加し、位置や文字サイズを調整します。レイヤーはプレビューに表示され、元画像は変更しません。全フレーム、特定フレーム、範囲を選べます。音声合成や新しいポーズの生成はありません。入力した文章は翻訳されません。",
+ "이미지, 말풍선, 자막, 내레이션을 추가하고 위치와 크기를 조절하세요. 레이어는 미리보기에 표시되며 원본 이미지를 바꾸지 않습니다. 전체, 지정 프레임 또는 구간에 표시할 수 있습니다. 음성 및 새로운 자세 생성은 없습니다. 입력한 글은 언어 전환으로 번역되지 않습니다.",
+ "Añade imágenes, bocadillos, subtítulos o narración y ajusta posición, tamaño y opacidad. Las capas aparecen en la vista previa sin modificar el original. Pueden mostrarse en todos los fotogramas, uno o un rango. No hay voz ni generación de poses. El cambio de idioma no traduce tu texto.",
+ "Ajoutez images, bulles, sous-titres ou narration, puis réglez position, taille et opacité. Les calques apparaissent dans l’aperçu sans modifier l’original. Choisissez toutes les images, une image liée ou une plage. Aucune voix ni nouvelle pose n’est générée. Vos textes ne sont pas traduits.",
+ "Bilder, Sprechblasen, Untertitel oder Erzähltext hinzufügen und Position, Größe sowie Deckkraft einstellen. Ebenen erscheinen in der Vorschau und ändern das Original nicht. Anzeige auf allen Frames, einem gebundenen Frame oder einem Bereich. Keine Sprachausgabe oder neuen Posen. Ihre Texte werden nicht übersetzt."
+ ]
+},
+{
+ id:"exportSection",
+ title:["輸出 GIF、PNG 與 WebM","Export GIF, PNG & WebM","导出 GIF、PNG 与 WebM","GIF・PNG・WebM出力","GIF·PNG·WebM 내보내기","Exportar GIF, PNG y WebM","Exporter GIF, PNG et WebM","GIF, PNG und WebM exportieren"],
+ body:[
+ "生成後還要按下載。GIF 循環播放，最多 256 色且不支援半透明；柔光建議用純色背景。PNG 圖集是靜態圖片。WebM 無聲且即時錄製，請保持頁面前景，可能掉格。不直接輸出 MP4。GIF 套件需連網；4K 不會修復原圖细節。",
+ "After generating, click Download. GIF loops with up to 256 colors and no partial transparency; use a solid background for soft glow. PNG sheets are static images. WebM records silently in real time; keep the tab foregrounded and expect possible dropped frames. No direct MP4 export. GIF needs an online library; 4K does not restore source detail.",
+ "生成后还需点击下载。GIF 循环播放，最多 256 色且不支持半透明；柔光建议用纯色背景。PNG 图集是静态图片。WebM 无声并实时录制，请保持页面前台，可能掉帧。不直接导出 MP4。GIF 编码库需要联网；4K 不会修复原图细节。",
+ "生成後に保存ボタンを押してください。GIFは256色までで半透明非対応です。柔らかい光には単色背景を推奨します。PNGシートは静止画です。WebMは無音でリアルタイム録画するため、タブを前面に保ってください。コマ落ちの可能性があります。MP4直接出力はなく、GIFにはネット接続が必要です。4Kは画質復元ではありません。",
+ "생성 후 다운로드를 눌러야 합니다. GIF는 최대 256색이며 반투명을 지원하지 않습니다. 부드러운 발광에는 단색 배경을 권장합니다. PNG 시트는 정지 이미지입니다. WebM은 무음 실시간 녹화이므로 탭을 앞에 두세요. 프레임이 누락될 수 있습니다. MP4 직접 출력은 없고 GIF 라이브러리는 인터넷이 필요합니다. 4K는 원본 디테일을 복원하지 않습니다.",
+ "Después de generar, pulsa Descargar. GIF admite hasta 256 colores sin transparencia parcial; usa fondo sólido para resplandores suaves. Las hojas PNG son estáticas. WebM graba sin sonido en tiempo real; mantén la pestaña en primer plano. Puede perder fotogramas. No exporta MP4 directamente. GIF requiere una biblioteca en línea; 4K no recupera detalles.",
+ "Après génération, cliquez sur Télécharger. Le GIF utilise au plus 256 couleurs sans transparence partielle ; préférez un fond uni pour les lueurs. Les planches PNG sont statiques. WebM enregistre sans son en temps réel : gardez l’onglet au premier plan. Des images peuvent manquer. Pas d’export MP4 direct. GIF nécessite une bibliothèque en ligne ; la 4K ne restaure pas les détails.",
+ "Nach dem Erstellen auf Herunterladen klicken. GIF unterstützt maximal 256 Farben ohne Teiltransparenz; für weiches Leuchten einen einfarbigen Hintergrund nutzen. PNG-Sheets sind statisch. WebM wird stumm in Echtzeit aufgenommen; Tab im Vordergrund lassen. Frames können ausfallen. Kein direkter MP4-Export. GIF benötigt eine Online-Bibliothek; 4K stellt keine Details wieder her."
+ ]
+},
+{
+ id:"actorSection",
+ title:["四向角色與鍵盤操控","Character Directions & Controls","四向角色与键盘控制","4方向キャラクターと操作","4방향 캐릭터와 조작","Personaje y controles","Personnage et commandes","Charakterrichtungen und Steuerung"],
+ body:[
+ "各方向自行加入待機、走路、奔跑影格。正面＝向下，背面＝向上，正面鏡像不能生成背面。點操控區，方向鍵／WASD 走路，Shift 奔跑。只有一張圖時是靜態移動。相同畫布素材請勿忽略透明留白，避免抖動。四向圖集順序：正面、背面、左側、右側；不包含操控程式。做角色 GIF，先複製動作到動畫區。",
+ "Provide idle, walk and run frames for each direction. Front means down and back means up; mirroring the front does not create the back. Focus the canvas: arrows/WASD walk, Shift runs. One image moves as a static pose. Keep transparent padding when frames share a canvas to avoid jitter. Sheet order: front, back, left, right. Sheets contain no control code. Copy an animation to the editor to make a GIF.",
+ "各方向自行加入待机、走路、奔跑帧。正面＝向下，背面＝向上，正面镜像不能生成背面。点击控制区，方向键／WASD 走路，Shift 奔跑。只有一张图时为静态移动。相同画布素材请勿忽略透明留白，以免抖动。四向图集顺序：正面、背面、左侧、右侧；不包含控制程序。制作角色 GIF，先复制动作到动画区。",
+ "各方向の待機・歩行・走行画像を用意します。正面は下、背面は上です。正面の反転で背面は作れません。キャンバスを選択し矢印／WASDで歩行、Shiftで走行します。1枚だけなら静止姿勢で移動します。共通キャンバスの透明余白は保持してください。シート順は正面、背面、左、右で、操作コードは含みません。GIF化は動作を編集領域へコピーします。",
+ "각 방향의 대기·걷기·달리기 프레임을 준비하세요. 정면은 아래, 후면은 위입니다. 정면을 반전해도 후면이 되지 않습니다. 캔버스를 클릭한 뒤 방향키/WASD로 걷고 Shift로 달립니다. 한 장이면 정적인 자세로 이동합니다. 동일 캔버스의 투명 여백은 유지하세요. 시트 순서는 정면, 후면, 왼쪽, 오른쪽이며 조작 코드는 없습니다. GIF는 동작을 편집기로 복사해 만듭니다.",
+ "Añade reposo, caminar y correr para cada dirección. Frente es abajo y espalda es arriba; reflejar el frente no crea la espalda. Enfoca el lienzo: flechas/WASD para caminar y Shift para correr. Una sola imagen mantiene una pose fija. Conserva los márgenes comunes para evitar saltos. Orden: frente, espalda, izquierda, derecha. La hoja no incluye controles. Copia la animación al editor para crear un GIF.",
+ "Ajoutez repos, marche et course pour chaque direction. Face correspond au bas, dos au haut ; un miroir de la face ne crée pas le dos. Cliquez sur le canevas : flèches/WASD pour marcher, Shift pour courir. Une seule image se déplace sans changer de pose. Gardez les marges communes pour éviter les tremblements. Ordre : face, dos, gauche, droite. Aucun code de contrôle n’est inclus. Copiez l’animation dans l’éditeur pour créer un GIF.",
+ "Stand-, Geh- und Laufbilder für jede Richtung bereitstellen. Vorne bedeutet unten, hinten oben; Spiegeln erzeugt keine Rückansicht. Canvas fokussieren: Pfeile/WASD zum Gehen, Shift zum Laufen. Ein Einzelbild bewegt sich mit statischer Pose. Gemeinsame transparente Ränder beibehalten, um Zittern zu vermeiden. Sheet-Reihenfolge: vorne, hinten, links, rechts. Kein Steuerungscode enthalten. Für GIF die Animation in den Editor kopieren."
+ ]
+},
+{
+ id:"",
+ title:["語言、GitHub 與限制","Languages, GitHub & Limits","语言、GitHub 与限制","言語・GitHub・制限","언어·GitHub·제한","Idiomas, GitHub y límites","Langues, GitHub et limites","Sprachen, GitHub und Grenzen"],
+ body:[
+ "上方可切換八種語言，瀏覽器允許時會記住選擇。只翻譯介面，不改對白、檔名或素材；特殊錯誤可能保留原文。GitHub 只需更新 index.html。素材在本機處理，沒有 AI 生圖、動作遷移或補幀。大量素材可能耗盡記憶體，請先用小尺寸測試。",
+ "Select one of eight languages at the top; the browser remembers it when storage is available. Only the interface is translated, not dialogue, filenames or assets. Unlisted errors may retain their original text. Update only index.html on GitHub. Assets are processed locally. No AI generation, motion transfer or interpolation. Large projects may exhaust memory; test with small images first.",
+ "顶部可切换八种语言，浏览器允许时会记住选择。仅翻译界面，不修改对白、文件名或素材；特殊错误可能保留原文。GitHub 仅需更新 index.html。素材在本机处理，没有 AI 生图、动作迁移或补帧。大量素材可能耗尽内存，请先用小尺寸测试。",
+ "上部で8言語を切り替えられ、保存が許可されていれば選択を記憶します。翻訳対象は画面のみで、入力文や素材は変更しません。一部エラーは原文のままです。GitHubではindex.htmlのみ更新します。素材はローカル処理です。AI生成・動作転送・補間はありません。小さい画像から試してください。",
+ "상단에서 8개 언어를 선택할 수 있으며 저장이 허용되면 선택을 기억합니다. 인터페이스만 번역하며 대사, 파일명, 소재는 바꾸지 않습니다. 일부 오류는 원문으로 남습니다. GitHub에서는 index.html만 업데이트하세요. 소재는 로컬 처리됩니다. AI 생성, 동작 전송, 보간은 없습니다. 작은 이미지부터 테스트하세요.",
+ "Elige uno de ocho idiomas arriba; se recuerda si el navegador permite almacenamiento. Solo se traduce la interfaz, no diálogos, nombres ni recursos. Algunos errores conservan su texto original. En GitHub actualiza solo index.html. El procesamiento es local. No hay generación IA, transferencia de movimiento ni interpolación. Prueba primero con imágenes pequeñas.",
+ "Choisissez une des huit langues en haut ; le choix est mémorisé si le stockage est autorisé. Seule l’interface est traduite, pas les dialogues, noms ou ressources. Certaines erreurs restent dans leur langue d’origine. Sur GitHub, mettez à jour index.html uniquement. Le traitement est local. Pas de génération IA, transfert de mouvement ou interpolation. Testez avec de petites images.",
+ "Oben eine von acht Sprachen wählen; bei erlaubtem Browserspeicher wird die Auswahl gespeichert. Nur die Oberfläche wird übersetzt, nicht Dialoge, Dateinamen oder Bilder. Manche Fehler bleiben im Original. Auf GitHub nur index.html aktualisieren. Verarbeitung erfolgt lokal. Keine KI-Erzeugung, Bewegungsübertragung oder Zwischenbildberechnung. Zuerst mit kleinen Bildern testen."
+ ]
+}
+];
+
+/* 修正繁體教學字形 */
+guides[2].title[0]="圖片、分割與時間";
+guides[2].body[0]=guides[2].body[0].replace("预覽","預覽");
+guides[5].body[0]=guides[5].body[0].replace("细節","細節");
+
+function t(text){
+ if(language==="zh-Hant")return text;
+ const key=aliases[text]||text;
+ if(dictionary.has(key))return choose(dictionary.get(key));
+ let m;
+
+ if((m=text.match(/^共 (\d+) 格｜選取第 (\d+) 格$/)))
+  return `${t("格")}: ${m[1]} | #${m[2]}`;
+ if((m=text.match(/^播放位置 (\d+)\/(\d+)｜來源第 (\d+) 格$/)))
+  return `${t("播放")}: ${m[1]}/${m[2]} | ${t("格")}: ${m[3]}`;
+ if((m=text.match(/^(\d+) × (\d+)｜(\d+) 格｜約 ([\d.]+) 秒$/)))
+  return `${m[1]} × ${m[2]} | ${m[3]} ${t("格")} | ≈ ${m[4]} s`;
+ if((m=text.match(/^待機 (\d+)｜走路 (\d+)｜奔跑 (\d+)$/)))
+  return `${t("待機")} ${m[1]} | ${t("走路")} ${m[2]} | ${t("奔跑")} ${m[3]}`;
+ if((m=text.match(/^(正面|背面|左側|右側)／(待機|走路|奔跑)｜(\d+) 格$/)))
+  return `${t(m[1])} / ${t(m[2])} | ${m[3]} ${t("格")}`;
+ if((m=text.match(/^(組別預覽|角色操控)｜(正面|背面|左側|右側)｜(待機|走路|奔跑)$/)))
+  return m.slice(1).map(t).join(" | ");
+ if((m=text.match(/^(\d+)\. (圖像|對話氣泡|對白字幕|自述旁白)$/)))
+  return `${m[1]}. ${t(m[2])}`;
+ if((m=text.match(/^(?:綁定|指定)第 (\d+) 格$/)))
+  return `${t("指定單格")}: ${m[1]}`;
+ if((m=text.match(/^第 (\d+)～(\d+) 格$/)))
+  return `${t("影格區間")}: ${m[1]}–${m[2]}`;
+ if((m=text.match(/^錄製 ([\d.]+)／([\d.]+) 秒$/)))
+  return `${t("生成無聲 WebM")}: ${m[1]} / ${m[2]} s`;
+
+ const operations={
+  "匯入圖片":"圖片影格",
+  "匯入":"圖片影格",
+  "擷取影片":"影片抽格",
+  "擷取":"影片抽格",
+  "去背":"去背",
+  "GIF 編碼":"生成 GIF",
+  "載入角色素材":"四向角色",
+  "載入角色圖片":"四向角色",
+  "建立專案":"建立專案存檔",
+  "讀取專案素材":"讀取專案"
+ };
+ if((m=text.match(/^(.+?) (\d+)\/(\d+)$/))&&operations[m[1]])
+  return `${t(operations[m[1]])} ${m[2]}/${m[3]}`;
+ return text;
+}
+
+/* 介面容器 */
+const css=document.createElement("style");
+css.textContent=`
+#studioLanguageBar{
+ display:flex;justify-content:flex-end;align-items:center;
+ gap:10px;flex-wrap:wrap;padding:10px;margin-bottom:14px;
+ color:#edf3fa;background:#15253b;border:1px solid #506781;
+ border-radius:9px;font:14px/1.6 system-ui,sans-serif
+}
+#studioLanguageBar select{
+ padding:7px;background:#101b2c;color:white;border:1px solid #7185a0;
+ border-radius:5px;font:inherit
+}
+#studioLanguageHelp{
+ margin-top:16px;padding:18px;background:#1b2637;color:#edf3fa;
+ border:1px solid #40516b;border-radius:12px;scroll-margin-top:15px
+}
+#studioLanguageHelp details{
+ margin:10px 0;padding:12px;border:1px solid #40516b;border-radius:8px
+}
+#studioLanguageHelp summary{cursor:pointer;font-weight:700;color:#9bc8ff}
+#studioLanguageHelp p,.studioTranslatedNote{line-height:1.8}
+#studioLanguageHelp button{
+ margin:4px;padding:8px 12px;background:#31445f;color:#fff;
+ border:1px solid #536781;border-radius:6px;cursor:pointer
+}
+.studioTranslatedNote{font-size:13px;color:#bdcce0}
+`;
+document.head.appendChild(css);
+
+const host=document.querySelector("main")||document.body;
+const bar=document.createElement("div");
+bar.id="studioLanguageBar";
+bar.dataset.studioLanguageOwned="1";
+const label=document.createElement("label");
+label.textContent="Language / 語言";
+label.htmlFor="studioLanguageSelect";
+const select=document.createElement("select");
+select.id="studioLanguageSelect";
+names.forEach((name,i)=>{
+ const option=document.createElement("option");
+ option.value=codes[i];option.textContent=name;select.append(option);
+});
+bar.append(label,select);
+host.prepend(bar);
+
+/* 原教學保留在 DOM，以免破壞原程式事件綁定 */
+const oldHelp=document.getElementById("help");
+if(oldHelp)oldHelp.style.display="none";
+const help=document.createElement("section");
+help.id="studioLanguageHelp";
+help.dataset.studioLanguageOwned="1";
+if(oldHelp)oldHelp.after(help);else host.append(help);
+document.querySelectorAll('a[href="#help"],a[href="#studioLanguageHelp"]')
+ .forEach(a=>a.setAttribute("href","#studioLanguageHelp"));
+
+const summaries=[];
+for(const guide of guides){
+ if(!guide.id)continue;
+ const section=document.getElementById(guide.id);
+ if(!section)continue;
+
+ /*
+  固定说明换成对应语言摘要。
+  带 ID 的状态文字不隐藏，继续由原程式更新。
+ */
+ Array.from(section.children).forEach(el=>{
+  if(el.matches("p.note")&&!el.id)el.style.display="none";
+ });
+ const p=document.createElement("p");
+ p.className="studioTranslatedNote";
+ p.dataset.studioLanguageOwned="1";
+ section.append(p);
+ summaries.push({p,guide});
+}
+
+/* 預覽區的固定說明 */
+const previewSection=document.getElementById("preview")?.closest("section");
+if(previewSection){
+ Array.from(previewSection.children).forEach(el=>{
+  if(el.matches("p.note")&&!el.id)el.style.display="none";
+ });
+ const p=document.createElement("p");
+ p.className="studioTranslatedNote";
+ p.dataset.studioLanguageOwned="1";
+ previewSection.append(p);
+ summaries.push({p,guide:guides[4]});
+}
+
+const heading=host.querySelector("h1");
+if(heading?.nextElementSibling?.matches("p.note")){
+ const p=heading.nextElementSibling;
+ p.dataset.studioLanguageOwned="1";
+ summaries.push({p,guide:{
+  body:[
+   "本機動畫工具・八語介面與教學・GIF 套件需連網。不含 AI 新姿勢或動作遷移。",
+   "Local animation tool · Eight languages and tutorials · GIF library needs internet. No AI poses or motion transfer.",
+   "本机动画工具・八语界面与教程・GIF 编码库需要联网。不含 AI 新姿势或动作迁移。",
+   "ローカルアニメーションツール・8言語対応・GIFライブラリはネット接続が必要です。AIポーズ生成や動作転送はありません。",
+   "로컬 애니메이션 도구·8개 언어와 안내·GIF 라이브러리는 인터넷이 필요합니다. AI 자세 생성이나 동작 전송은 없습니다.",
+   "Herramienta local · Ocho idiomas y tutoriales · GIF requiere internet. Sin poses IA ni transferencia de movimiento.",
+   "Outil local · Huit langues et tutoriels · GIF nécessite Internet. Sans poses IA ni transfert de mouvement.",
+   "Lokales Animationstool · Acht Sprachen und Anleitungen · GIF benötigt Internet. Keine KI-Posen oder Bewegungsübertragung."
+  ]
+ }});
+}
+
+/* 工具提示單獨翻譯，不干預原始 pointer 事件 */
+const toolHints={
+ pick:[
+  "點背景取色，再按去背。",
+  "Sample the background color, then remove the background.",
+  "点击背景取色，再去背景。",
+  "背景色を取得してから背景を除去します。",
+  "배경색을 추출한 뒤 배경을 제거하세요.",
+  "Toma el color del fondo y luego elimínalo.",
+  "Prélevez la couleur du fond, puis supprimez-le.",
+  "Hintergrundfarbe aufnehmen, dann Hintergrund entfernen."
+ ],
+ erase:[
+  "拖曳擦除，只處理目前影格。",
+  "Drag to erase the selected frame only.",
+  "拖动擦除，仅处理当前帧。",
+  "ドラッグして選択フレームを消去します。",
+  "드래그하면 현재 프레임만 지워집니다.",
+  "Arrastra para borrar solo el fotograma seleccionado.",
+  "Faites glisser pour effacer uniquement l’image sélectionnée.",
+  "Ziehen, um nur den ausgewählten Frame zu löschen."
+ ],
+ text:[
+  "框選後擦成透明，不補回被遮住的內容。",
+  "Draw a rectangle to erase to transparency. No reconstruction.",
+  "框选后擦成透明，不恢复被遮挡的内容。",
+  "矩形範囲を透明にします。内容の復元はしません。",
+  "사각형 영역을 투명하게 지웁니다. 내용은 복원하지 않습니다.",
+  "Borra un rectángulo a transparencia, sin reconstrucción.",
+  "Effacez un rectangle en transparence, sans reconstruction.",
+  "Rechteck transparent löschen, ohne Rekonstruktion."
+ ],
+ crop:[
+  "框出要保留的範圍，放開後剪裁。",
+  "Draw the area to keep, then release to crop.",
+  "框出要保留的范围，松开后裁剪。",
+  "残す範囲を囲み、離して切り抜きます。",
+  "남길 영역을 지정하고 놓으면 잘립니다.",
+  "Marca el área que deseas conservar y suelta para recortar.",
+  "Sélectionnez la zone à garder, puis relâchez pour recadrer.",
+  "Zu behaltenden Bereich markieren und zum Zuschneiden loslassen."
+ ]
+};
+[
+ ["點背景取色，再按去背。","pick"],
+ ["拖曳擦除；筆刷單位為原圖像素，只處理目前影格。","erase"],
+ ["拖曳擦除；筆刷單位為原圖像素。","erase"],
+ ["框選後擦成透明，不會補回被遮住的內容。","text"],
+ ["框選後擦成透明，不補圖。","text"],
+ ["框出要保留的範圍，放開後剪裁。","crop"],
+ ["框選要保留的範圍，放開剪裁。","crop"]
+].forEach(([text,key])=>dictionary.set(text,toolHints[key]));
+
+function renderHelp(){
+ help.replaceChildren();
+ const h=document.createElement("h2");
+ h.textContent=choose(ui.help);
+ const open=document.createElement("button");
+ const close=document.createElement("button");
+ open.textContent=choose(ui.expand);
+ close.textContent=choose(ui.collapse);
+ open.onclick=()=>help.querySelectorAll("details").forEach(d=>d.open=true);
+ close.onclick=()=>help.querySelectorAll("details").forEach(d=>d.open=false);
+ help.append(h,open,close);
+ guides.forEach((guide,i)=>{
+  const details=document.createElement("details");
+  details.open=i===0;
+  const summary=document.createElement("summary");
+  const p=document.createElement("p");
+  summary.textContent=choose(guide.title);
+  p.textContent=choose(guide.body);
+  details.append(summary,p);help.append(details);
+ });
+}
+
+/* 保留原文，避免多次切換造成翻譯覆蓋 */
+const textRecords=new WeakMap();
+const attrRecords=new WeakMap();
+const originalTitle=document.title;
+
+function excluded(node){
+ const el=node.nodeType===1?node:node.parentElement;
+ return !el||!!el.closest(
+  '[data-studio-language-owned],#help,script,style,textarea,pre,code,noscript'
+ );
+}
+function translateText(node){
+ if(node.nodeType!==3||excluded(node))return;
+ const now=node.nodeValue;
+ let record=textRecords.get(node);
+ if(!record||now!==record.output)record={source:now,output:now};
+ const trimmed=record.source.trim();
+ const left=record.source.match(/^\s*/)[0];
+ const right=record.source.match(/\s*$/)[0];
+ record.output=trimmed?left+t(trimmed)+right:record.source;
+ textRecords.set(node,record);
+ if(now!==record.output)node.nodeValue=record.output;
+}
+function translateAttrs(el){
+ if(excluded(el))return;
+ let map=attrRecords.get(el);
+ if(!map){map={};attrRecords.set(el,map);}
+ for(const key of ["title","aria-label","placeholder","alt"]){
+  if(!el.hasAttribute(key))continue;
+  const now=el.getAttribute(key);
+  let rec=map[key];
+  if(!rec||now!==rec.output)rec={source:now,output:now};
+  rec.output=t(rec.source);map[key]=rec;
+  if(now!==rec.output)el.setAttribute(key,rec.output);
+ }
+}
+function walk(root){
+ if(!root)return;
+ if(root.nodeType===3){translateText(root);return;}
+ if(root.nodeType!==1||excluded(root))return;
+ translateAttrs(root);
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ let node;
+ while((node=walker.nextNode()))translateText(node);
+ root.querySelectorAll("[title],[aria-label],[placeholder],[alt]").forEach(translateAttrs);
+}
+
+/* 只翻譯操控畫布的介面文字，不碰字幕輸出畫布 */
+const game=document.getElementById("game");
+if(game){
+ const ctx=game.getContext("2d");
+ if(ctx){
+  const native=ctx.fillText;
+  ctx.fillText=function(text,...args){
+   return native.call(this,t(String(text)),...args);
+  };
+ }
+}
+
+/* 已收錄的原生提示視窗 */
+for(const key of ["alert","confirm"]){
+ const native=window[key].bind(window);
+ window[key]=text=>native(t(String(text)));
+}
+
+/* 追蹤原程式動態更新的按鈕、狀態及選項 */
+const config={
+ subtree:true,childList:true,characterData:true,
+ attributes:true,attributeFilter:["title","aria-label","placeholder","alt"]
+};
+let observer;
+function observe(){observer.observe(document.body,config);}
+observer=new MutationObserver(mutations=>{
+ observer.disconnect();
+ try{
+  const roots=new Set();
+  mutations.forEach(m=>{
+   if(m.type==="characterData"||m.type==="attributes")roots.add(m.target);
+   else m.addedNodes.forEach(n=>roots.add(n));
+  });
+  roots.forEach(walk);
+ }finally{observe();}
+});
+function apply(){
+ observer.disconnect();
+ try{
+  document.documentElement.lang=language;
+  document.title=t(originalTitle);
+  select.value=language;
+  summaries.forEach(({p,guide})=>p.textContent=choose(guide.body));
+  renderHelp();walk(document.body);
+ }finally{observe();}
+}
+select.onchange=()=>{
+ language=codes.includes(select.value)?select.value:"zh-Hant";
+ try{localStorage.setItem(KEY,language);}catch(e){}
+ apply();
+};
+apply();
+})();
+</script>
+<!-- STUDIO_EIGHT_LANGUAGES_END -->
 </body>
 </html>
