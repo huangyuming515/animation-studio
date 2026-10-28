@@ -1,0 +1,2015 @@
+html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>動畫與四向角色工作室</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:dark}
+body{margin:0;background:#101722;color:#edf3fa;font:14px/1.65 system-ui,"Microsoft JhengHei",sans-serif}
+main{max-width:1360px;margin:auto;padding:16px}
+h1{font-size:25px;margin:0}
+h2{font-size:19px;margin:0 0 12px}
+h3{font-size:16px;margin:16px 0 8px}
+section{background:#1b2637;border:1px solid #35445b;border-radius:12px;padding:16px;margin-top:16px;scroll-margin-top:12px}
+.row{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:10px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+button,a.btn{font:inherit;padding:8px 12px;border-radius:6px;border:1px solid #536781;background:#31445f;color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover,a.btn:hover{background:#466181}
+.primary{background:#2563eb!important}
+.active{outline:2px solid #79b8ff}
+button:disabled,input:disabled,select:disabled,textarea:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;padding:5px;background:#101b2c;color:#fff;border:1px solid #536781;border-radius:5px}
+input[type=number]{width:86px}
+input[type=range]{width:110px}
+input[type=color]{width:42px;height:30px;padding:2px}
+label{display:inline-flex;align-items:center;gap:5px}
+textarea{width:100%;padding:10px;resize:vertical}
+.note{font-size:12px;color:#bac8db}
+nav{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+nav a,summary{color:#9bc8ff}
+.drop{padding:24px;text-align:center;border:2px dashed #7185a0;border-radius:9px;cursor:pointer}
+.drop.over{background:#26446b}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:12px 0;min-height:40px}
+.thumb{flex:0 0 96px;border:2px solid transparent;border-radius:7px;padding:4px;background:#101b2b;cursor:pointer;text-align:center}
+.thumb.selected{border-color:#67afff}
+.thumb canvas{display:block;width:84px;height:68px}
+.checker{background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%),linear-gradient(-45deg,#ddd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ddd 75%),linear-gradient(-45deg,transparent 75%,#ddd 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
+.stage{min-height:180px;background:#0b1320;padding:10px;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:auto}
+.view{display:block;max-width:100%;height:auto;max-height:440px;object-fit:contain}
+#editor{touch-action:none;cursor:crosshair}
+video{max-width:100%;max-height:350px;background:#000}
+#sourceVideo{width:100%}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0;color:#b9dcff}
+progress{width:100%}
+.four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.card{background:#101b2b;border:1px solid #536781;border-radius:8px;padding:10px;text-align:center}
+.card canvas{display:block;max-width:100%;height:130px;object-fit:contain;margin:8px auto}
+#game{display:block;max-width:100%;height:auto;margin:auto;border:2px solid #536781;touch-action:none}
+#game:focus{outline:3px solid #79b8ff}
+.pad{display:grid;grid-template-columns:repeat(3,48px);justify-content:center;gap:5px;margin:12px auto}
+.pad button{touch-action:none}
+details{margin:10px 0;border:1px solid #35445b;border-radius:8px;padding:10px}
+summary{cursor:pointer;font-weight:bold}
+.help p{margin:8px 0}
+.help li{margin:5px 0}
+.statusbar{position:sticky;bottom:0;z-index:10;background:#152238;border:1px solid #526982;border-radius:9px;padding:8px 12px;margin-top:16px;box-shadow:0 -3px 16px #0005}
+.statusbar progress{height:7px}
+[hidden]{display:none!important}
+@media(max-width:850px){.grid{grid-template-columns:1fr}}
+@media(max-width:650px){.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<main>
+<h1>動畫與四向角色工作室</h1>
+<p class="note">單一 HTML・本機素材處理・內建教學・GIF 套件需連網。不含 AI 新姿勢、補幀或動作遷移。</p>
+<nav>
+<a href="#project">專案</a>
+<a href="#videoSection">影片抽格</a>
+<a href="#imageSection">圖片影格</a>
+<a href="#editSection">編輯</a>
+<a href="#layerSection">圖層</a>
+<a href="#exportSection">輸出</a>
+<a href="#actorSection">四向角色</a>
+<a href="#help">完整教學</a>
+</nav>
+
+<section id="project">
+<h2>專案管理</h2>
+<div class="row">
+<button id="saveProject" class="primary">建立專案存檔</button>
+<a id="projectDownload" class="btn" hidden download>下載專案 JSON</a>
+<button id="loadProject">讀取專案</button>
+<input id="projectFile" type="file" accept=".json,application/json" hidden>
+<a class="btn" href="#help">查看完整教學</a>
+</div>
+<p class="note">先建立，再下載。沒有自動儲存。保存影格、疊加圖層、角色素材與設定；不保存原始影片、播放進度及復原紀錄。本版只讀取第 2 版專案。</p>
+</section>
+
+<section id="videoSection">
+<h2>1. 影片匯入與抽格</h2>
+<div class="row">
+<button id="chooseVideo">選取影片</button>
+<input id="videoFile" type="file" hidden>
+<span id="videoInfo" class="note">尚未載入影片</span>
+</div>
+<video id="sourceVideo" controls playsinline preload="auto" hidden></video>
+<div class="row">
+<label>開始秒數<input id="start" type="number" min="0" step=".001" value="0"></label>
+<button id="markStart">設為目前起點</button>
+<label>結束秒數<input id="end" type="number" min="0" step=".001" value="3"></label>
+<button id="markEnd">設為目前終點</button>
+</div>
+<div class="row">
+<label>每秒擷取<select id="extractFps"><option>5</option><option selected>10</option><option>12</option><option>15</option><option>20</option><option>25</option><option>30</option></select>格</label>
+<label>長邊上限<select id="extractSize"><option>480</option><option selected>720</option><option>1280</option><option>1920</option></select>px</label>
+<button id="extract" class="primary">擷取並加入動畫影格</button>
+</div>
+<p class="note">建議先擷取 2～3 秒、每秒 10 格、長邊 720。選取不限副檔名，但只能處理瀏覽器可解碼的影片。無法播放請轉成 MP4（H.264）。抽格保留原角色與背景，不保留聲音。</p>
+</section>
+
+<section id="imageSection">
+<h2>2. 圖片匯入、排序與時間</h2>
+<div id="drop" class="drop" tabindex="0" role="button">拖曳圖片到這裡，或點擊選取多張圖片</div>
+<input id="imageFiles" type="file" accept="image/*" multiple hidden>
+<div id="frames" class="strip"></div>
+<div class="row">
+<span id="frameInfo" class="note">尚無影格</span>
+<button id="frameLeft">← 往前</button>
+<button id="frameRight">往後 →</button>
+<button id="frameCopy">複製此格</button>
+<button id="frameDelete">刪除此格</button>
+<button id="clearAnimation">清空動畫與圖層</button>
+</div>
+<div class="row">
+<label>此格時間<input id="frameDelay" type="number" min="20" max="10000" step="10" value="100">毫秒</label>
+<button id="setFrameDelay">套用此格</button>
+<label>統一時間<input id="defaultDelay" type="number" min="20" max="10000" step="10" value="100">毫秒</label>
+<button id="setAllDelay">套用全部影格</button>
+</div>
+<p class="note">100 毫秒約每秒 10 格；50 毫秒約每秒 20 格。縮圖可拖曳排序。動畫 GIF／WebP 匯入只取單一畫面，不拆幀。</p>
+
+<h3>規則圖集分割</h3>
+<div class="row">
+<label>橫向<input id="cols" type="number" min="1" max="50" value="4">格</label>
+<label>縱向<input id="rows" type="number" min="1" max="50" value="2">格</label>
+<select id="order" aria-label="分割順序"><option value="row">由左至右，再往下</option><option value="col">由上至下，再往右</option></select>
+<label>外框留白<input id="margin" type="number" min="0" max="5000" value="0"></label>
+<label>水平間距<input id="gapX" type="number" min="0" max="5000" value="0"></label>
+<label>垂直間距<input id="gapY" type="number" min="0" max="5000" value="0"></label>
+</div>
+<div class="row">
+<label><input id="skipEmpty" type="checkbox" checked>略過全透明格</label>
+<button id="showGrid">預覽格線</button>
+<button id="split">分割目前圖片</button>
+</div>
+<div id="gridBox" class="stage" hidden><canvas id="gridCanvas" class="view checker"></canvas></div>
+<p class="note">橫向＝每列幾格；縱向＝共有幾列。先確認格線，再分割。分割取代目前圖片，不能復原；不規則排列請複製圖片後分別剪裁。</p>
+</section>
+
+<div class="grid">
+<section id="editSection">
+<h2>3. 去背、去字與剪裁</h2>
+<div id="tools" class="row">
+<button data-tool="pick" class="active">吸取背景色</button>
+<button data-tool="erase">橡皮擦</button>
+<button data-tool="text">框選去字</button>
+<button data-tool="crop">剪裁</button>
+</div>
+<div class="row">
+<label>背景色<input id="bg" type="color" value="#ffffff"></label>
+<label>容差<input id="tolerance" type="range" min="0" max="200" value="45"></label>
+<button id="removeBg">去背</button>
+</div>
+<div class="row">
+<label><input id="edgeOnly" type="checkbox" checked>只去除邊緣連通背景</label>
+<label><input id="batch" type="checkbox">去背／去字／剪裁套用全部</label>
+</div>
+<div class="row">
+<label>筆刷<input id="brush" type="range" min="2" max="300" value="28"></label>
+<button id="undo">復原此格</button>
+<button id="resetFrame">重設此格</button>
+</div>
+<div class="stage"><canvas id="editor" class="view checker" width="480" height="320"></canvas></div>
+<p id="toolHint" class="note">點背景取色，再按去背。</p>
+<p class="note">這裡只編輯原始影格，圖層請看右側預覽。去字擦成透明、不補圖。橡皮擦只處理目前影格；每格保留最近一次編輯復原。</p>
+</section>
+
+<section>
+<h2>4. 動畫與特效預覽</h2>
+<div class="row">
+<label>特效<select id="fx"><option value="none">無</option><option value="glow">呼吸發光</option><option value="sparks">環繞火花</option><option value="magic">旋轉魔法陣</option><option value="speed">速度線</option></select></label>
+<input id="fxColor" type="color" value="#44ccff" aria-label="特效顏色">
+<label>強度<input id="power" type="range" min="10" max="100" value="65"></label>
+</div>
+<div class="row">
+<label>單張特效<input id="fxFrames" type="number" min="4" max="120" value="24">格</label>
+<select id="playOrder" aria-label="播放順序"><option value="forward">正向</option><option value="reverse">反向</option><option value="pingpong">來回</option></select>
+<button id="play">播放</button>
+<button id="prev">上一格</button>
+<button id="next">下一格</button>
+</div>
+<div class="stage"><canvas id="preview" class="view checker" width="640" height="360"></canvas></div>
+<p id="previewInfo" class="note"></p>
+<p class="note">只有一張圖片時，特效可以動，但角色不會自動產生新姿勢。停止播放後，可逐格檢查字幕與畫面。</p>
+</section>
+</div>
+
+<section id="layerSection">
+<h2>5. 圖像、對話、字幕與旁白圖層</h2>
+<div class="row">
+<button id="addImageLayer">＋ 圖像</button>
+<button id="addBubble">＋ 對話氣泡</button>
+<button id="addSubtitle">＋ 對白字幕</button>
+<button id="addNarration">＋ 自述旁白</button>
+<input id="layerFile" type="file" accept="image/*" hidden>
+</div>
+<div class="row">
+<select id="layerList" aria-label="圖層"></select>
+<button id="layerBack">下移</button>
+<button id="layerFront">上移</button>
+<button id="layerCopy">複製</button>
+<button id="layerDelete">刪除</button>
+</div>
+<div id="layerControls" hidden>
+<div class="row">
+<label>顯示範圍<select id="layerScope"><option value="all">全部</option><option value="frame">指定單格</option><option value="range">影格區間</option></select></label>
+<button id="bindLayer">綁定目前影格</button>
+<label>第<input id="rangeStart" type="number" min="1" max="1200" value="1">格至</label>
+<label>第<input id="rangeEnd" type="number" min="1" max="1200" value="10">格</label>
+<span id="scopeInfo" class="note"></span>
+</div>
+<div id="textFields">
+<div class="row">
+<label>角色名稱<input id="speaker" type="text" maxlength="50" placeholder="可留白"></label>
+<select id="fontFamily" aria-label="字體"><option value="sans">黑體</option><option value="serif">明體</option></select>
+<label><input id="bold" type="checkbox" checked>粗體</label>
+<select id="textAlign" aria-label="文字對齊"><option value="left">靠左</option><option value="center">置中</option><option value="right">靠右</option></select>
+</div>
+<textarea id="layerText" rows="3" maxlength="3000" placeholder="輸入對白或旁白，可換行"></textarea>
+<div class="row">
+<label>文字色<input id="textColor" type="color" value="#ffffff"></label>
+<label>框底／描邊<input id="fillColor" type="color" value="#172033"></label>
+<label>相對字級<input id="fontSize" type="range" min="2" max="15" step=".2" value="5"></label>
+</div>
+</div>
+<div class="row">
+<label>水平<input id="layerX" type="range" min="0" max="100" value="50"></label>
+<label>垂直<input id="layerY" type="range" min="0" max="100" value="80"></label>
+<label>寬度<input id="layerWidth" type="range" min="5" max="100" value="80"></label>
+<label>不透明度<input id="layerOpacity" type="range" min="0" max="100" value="100"></label>
+</div>
+</div>
+<p class="note">圖層由下到上排列，位置以中心為準。單格綁定跟隨影格；影格區間按目前排序編號。旁白只有文字，沒有語音。</p>
+</section>
+
+<section id="exportSection">
+<h2>6. 動畫輸出</h2>
+<div class="row">
+<label>解析度<select id="resolution"><option value="custom">自訂</option><option value="640x360">640 × 360</option><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option><option value="3840x2160">4K 橫式</option><option value="2160x3840">4K 直式</option><option value="2160x2160">2160 × 2160</option></select></label>
+<label>寬<input id="width" type="number" min="16" max="3840" value="640"></label>
+<label>高<input id="height" type="number" min="16" max="3840" value="360"></label>
+<button id="useSize">使用目前影格尺寸</button>
+</div>
+<div class="row">
+<label>主體大小<input id="scale" type="range" min="30" max="100" value="100">%</label>
+<select id="outputBg" aria-label="輸出背景"><option value="transparent">透明背景</option><option value="solid">純色背景</option></select>
+<input id="outputColor" type="color" value="#101722" aria-label="背景顏色">
+<label><input id="pixel" type="checkbox">像素風</label>
+<label>GIF 透明門檻<input id="alpha" type="range" min="1" max="255" value="128"></label>
+</div>
+<p id="outputInfo" class="note"></p>
+<div class="row">
+<button id="exportGif" class="primary">生成 GIF</button>
+<a id="gifDownload" class="btn" hidden download>下載 GIF</a>
+<button id="exportPng">生成目前畫面 PNG</button>
+<a id="pngDownload" class="btn" hidden download>下載 PNG</a>
+<button id="exportVideo">生成無聲 WebM</button>
+<a id="webmDownload" class="btn" hidden download>下載 WebM</a>
+</div>
+<div class="row">
+<label>圖集每列<input id="atlasCols" type="number" min="1" max="32" value="4">格</label>
+<button id="exportAtlas">生成動畫 PNG 圖集</button>
+<a id="atlasDownload" class="btn" hidden download>下載動畫圖集</a>
+</div>
+<div id="gifResult" class="stage" hidden><img id="gifImage" class="view checker" alt="GIF 成品"></div>
+<video id="videoResult" class="view" controls hidden></video>
+<p class="note">GIF 會循環播放、最多 256 色、不支援半透明。PNG 圖集是靜態圖片。WebM 即時錄製一輪、無聲，透明區使用背景色；錄製時請保持本頁在前景。4K 是輸出尺寸，不是 AI 畫質修復。</p>
+</section>
+
+<section id="actorSection">
+<h2>7. 四向多動作角色</h2>
+<p class="note">正面＝向下、背面＝向上。每個方向可分別放入待機／走路／奔跑影格。只做四向靜態圖時，各方向待機放一張即可。</p>
+<div id="fourCards" class="four"></div>
+<div class="row">
+<label>方向<select id="actorDir"><option value="down">正面／向下</option><option value="up">背面／向上</option><option value="left">左側／向左</option><option value="right">右側／向右</option></select></label>
+<label>動作<select id="actorAction"><option value="idle">待機</option><option value="walk">走路</option><option value="run">奔跑</option></select></label>
+<button id="actorAdd">匯入這組動作圖片</button>
+<button id="actorCurrent">加入目前動畫影格</button>
+<button id="actorAll">加入全部動畫影格</button>
+<input id="actorFiles" type="file" accept="image/*" multiple hidden>
+</div>
+<div id="actorFrames" class="strip"></div>
+<div class="row">
+<span id="actorInfo" class="note"></span>
+<button id="actorLeft">← 往前</button>
+<button id="actorRight">往後 →</button>
+<button id="actorCopy">複製</button>
+<button id="actorDelete">刪除</button>
+<button id="actorClear">清空這組</button>
+<label>每格時間<input id="actorDelay" type="number" min="20" max="5000" step="10" value="120">毫秒</label>
+</div>
+<div class="row">
+<label>画格寬<input id="actorWidth" type="number" min="16" max="1024" value="256"></label>
+<label>高<input id="actorHeight" type="number" min="16" max="1024" value="256"></label>
+<select id="actorAlign" aria-label="角色對齊"><option value="bottom">脚底對齊</option><option value="center">中央對齊</option></select>
+<label><input id="actorTrim" type="checkbox">忽略透明留白</label>
+<label><input id="actorPixel" type="checkbox">像素風</label>
+</div>
+<div class="row">
+<label>這組大小<input id="actorScale" type="range" min="10" max="150" value="90"></label>
+<label>水平微調<input id="actorX" type="range" min="-50" max="50" value="0"></label>
+<label>垂直微調<input id="actorY" type="range" min="-50" max="50" value="0"></label>
+<button id="actorReset">重設這組位置</button>
+</div>
+<p class="note">影格原本已使用相同畫布與定位時，請勿勾選「忽略透明留白」，避免每格重新縮放而抖動。腳底對齊是對圖片範圍底部，不會辨識角色腳部。</p>
+<div class="row">
+<button id="actorPreview">預覽目前動作</button>
+<button id="actorControl" class="primary">啟用鍵盤操控</button>
+<button id="actorHome">回到中央</button>
+<label>顯示尺寸<input id="actorDisplay" type="range" min="48" max="220" value="120"></label>
+<label>速度<input id="actorSpeed" type="range" min="40" max="320" value="140"></label>
+<label>奔跑倍率<input id="runRate" type="number" min="1" max="4" step=".1" value="1.8"></label>
+</div>
+<canvas id="game" width="800" height="420" tabindex="0" aria-label="角色操控區"></canvas>
+<div class="pad"><span></span><button data-move="up">↑</button><span></span><button data-move="left">←</button><button data-move="down">↓</button><button data-move="right">→</button></div>
+<label><input id="touchRun" type="checkbox">方向按鈕使用奔跑</label>
+<p class="note">先點操控區。方向鍵／WASD 走路，Shift＋方向鍵／WASD 奔跑，放開回待機。只有一張圖時是靜態姿勢移動，不會自動生成步態。</p>
+<div class="row">
+<label>四向排列<select id="fourLayout"><option value="row">橫排 4 × 1</option><option value="grid">方格 2 × 2</option></select></label>
+<button id="exportFour">生成四向 PNG</button>
+<a id="fourDownload" class="btn" hidden download>下載四向圖集</a>
+</div>
+<div class="row">
+<label>動作圖集每列<input id="actorCols" type="number" min="1" max="32" value="8">格</label>
+<button id="exportActor">生成目前動作 PNG 圖集</button>
+<a id="actorDownload" class="btn" hidden download>下載動作圖集</a>
+<button id="actorToAnimation">複製目前動作到動畫區</button>
+</div>
+<p class="note">四向 PNG 取各方向待機第一格，順序為正面、背面、左側、右側。角色動作要做成 GIF：先複製到動畫區，再生成 GIF。PNG 圖集不包含操控程式。</p>
+</section>
+
+<section id="help" class="help">
+<h2>8. 完整操作教學</h2>
+<div class="row"><button id="openHelp">展開全部教學</button><button id="closeHelp">收合全部教學</button></div>
+
+<details open>
+<summary>第一次使用：先做一個簡單動畫</summary>
+<ol>
+<li>準備 3～6 張連續動作圖片，建議命名為 001.png、002.png、003.png。</li>
+<li>在「圖片匯入」一次選取全部圖片，工具依檔名排序。</li>
+<li>確認縮圖順序，必要時拖曳排序。</li>
+<li>統一時間填入 100 毫秒，按「套用全部影格」。</li>
+<li>按「播放」，確認動作。</li>
+<li>先使用小尺寸輸出，按「生成 GIF」，完成後按「下載 GIF」。</li>
+<li>要保留編輯內容，按「建立專案存檔」，再按「下載專案 JSON」。</li>
+</ol>
+<p><strong>「生成」只建立可下載的成品，仍要按下載才能保存到電腦。</strong></p>
+</details>
+
+<details>
+<summary>如何儲存與開啟這個 HTML？</summary>
+<ol>
+<li>把整份 HTML 程式複製到記事本。</li>
+<li>選「另存新檔」，檔名填「動畫製作器.html」。</li>
+<li>檔案類型選「所有檔案」，編碼選 UTF-8。</li>
+<li>確認不是「動畫製作器.html.txt」。</li>
+<li>用電腦版 Chrome／Edge 開啟。</li>
+</ol>
+<p>一般圖片處理不需上傳素材。第一次生成 GIF 需要網路載入 gifenc 套件；其他本機功能不依賴此套件。</p>
+</details>
+
+<details>
+<summary>連續圖片：排序、播放速度與停頓</summary>
+<p>點選縮圖後，可往前、往後、複製或刪除。拖曳縮圖也能排序。</p>
+<ul>
+<li>100 毫秒：約每秒 10 格。</li>
+<li>50 毫秒：約每秒 20 格。</li>
+<li>200 毫秒：約每秒 5 格。</li>
+<li>想讓最後一格停留較久：選最後一格，時間填 800，按「套用此格」。</li>
+</ul>
+<p>時間越短播放越快。播放順序可選正向、反向或來回；來回不重複兩端影格。</p>
+<p>匯入動畫 GIF／WebP 不會自動拆成全部影格，請使用連續 PNG 或影片抽格。</p>
+</details>
+
+<details>
+<summary>一張圖片有很多姿勢：圖集分割</summary>
+<ol>
+<li>匯入圖集，選取該圖片。</li>
+<li>橫向填每列格數；縱向填總列數。例如每列 4 格、2 列，填橫向 4、縱向 2。</li>
+<li>有外框空白時設定留白；格子有縫隙時設定水平及垂直間距。</li>
+<li>按「預覽格線」，檢查每個框是否對準動作。</li>
+<li>選由左至右或由上至下，按「分割目前圖片」。</li>
+</ol>
+<p><strong>分割會取代原本那一格，而且不能復原；請保留原始圖片。</strong></p>
+<p>不同圖片可以分別套用不同分割設定。動作不是規則格子排列時，先複製圖片，再逐張剪裁。</p>
+</details>
+
+<details>
+<summary>影片抽格：從真人、2D 或 3D 影片取得影格</summary>
+<ol>
+<li>選取影片，等待長度與解析度顯示。</li>
+<li>拖曳播放位置到起點，按「設為目前起點」。</li>
+<li>拖曳到終點，按「設為目前終點」。</li>
+<li>第一次建議 2～3 秒、每秒 10 格、長邊 720。</li>
+<li>按「擷取並加入動畫影格」，等待完成。</li>
+<li>抽出的影格會追加到現有動畫後面，可以編輯並輸出。</li>
+</ol>
+<p>選取不限副檔名不代表能解碼所有格式。無法播放請轉成 MP4（H.264）。</p>
+<p>抽格保留影片中的角色及背景，不保留聲音，也不會把影片動作轉移到另一個角色。時間以 10 毫秒為單位，可能有些微播放速度差。</p>
+</details>
+
+<details>
+<summary>單色去背、橡皮擦與去字</summary>
+<h3>去背</h3>
+<ol>
+<li>選取影格，按「吸取背景色」。</li>
+<li>在原圖編輯畫布點背景，取得顏色。</li>
+<li>建議保持勾選「只去除邊緣連通背景」。</li>
+<li>按「去背」。殘留太多可增加容差；角色被誤刪則復原並降低容差。</li>
+</ol>
+<p>邊緣連通模式只處理能從圖片邊緣連到的相近背景；角色圍住的背景可能需要橡皮擦處理。此功能不是 AI 人像去背。</p>
+<h3>橡皮擦與框選去字</h3>
+<ul>
+<li>橡皮擦：調整筆刷，在畫布拖曳。只修改目前影格。</li>
+<li>框選去字：框住文字並放開，整個框選區變透明。</li>
+</ul>
+<p><strong>去字不會補回被文字遮住的角色或背景。</strong></p>
+</details>
+
+<details>
+<summary>剪裁、批次處理與復原</summary>
+<p>選「剪裁」，拖曳框出要保留的範圍，放開後裁切。</p>
+<p>勾選「去背／去字／剪裁套用全部」會處理所有動畫影格；去字及剪裁按相對位置套用。角色每格位置不同時，請先逐格檢查。</p>
+<ul>
+<li>復原此格：回到最近一次編輯之前，每格只有一步。</li>
+<li>重設此格：還原該影格加入動畫時的圖片。</li>
+<li>分割、刪除、排序及清空不在影像復原範圍內。</li>
+</ul>
+<p>大型批次工作可取消；若已有部分影格完成，會保留已完成的修改。</p>
+</details>
+
+<details>
+<summary>加入標誌、對話氣泡、字幕及旁白</summary>
+<ol>
+<li>先有動畫影格，再選擇新增圖像、對話氣泡、對白字幕或自述旁白。</li>
+<li>從圖層下拉選單選取要編輯的圖層。</li>
+<li>文字圖層輸入角色名稱與內容，可手動換行。</li>
+<li>調整水平、垂直、寬度、不透明度、字級與顏色。</li>
+<li>用上移／下移改變圖層遮擋順序。</li>
+</ol>
+<p><strong>圖層顯示在動畫預覽與輸出，不會直接改動原圖編輯畫布。</strong></p>
+<ul>
+<li>全部：每格顯示。</li>
+<li>指定單格：先選影格，再按「綁定目前影格」。影格排序後仍跟隨原本那一格。</li>
+<li>影格區間：例如第 5～15 格，依當下排序編號顯示。</li>
+</ul>
+<p>單張特效動畫仍只有一張來源圖片；圖層區間依來源影格判定，不是依特效生成格數。旁白沒有語音合成。</p>
+</details>
+
+<details>
+<summary>特效、透明背景與輸出格式差別</summary>
+<p>特效可選呼吸發光、環繞火花、旋轉魔法陣或速度線，並設定顏色與強度。</p>
+<p>只有一張圖片時，「單張特效」決定特效動畫生成幾格；不會生成新姿勢。</p>
+<ul>
+<li><strong>GIF：</strong>會播放的循环動畫；最多 256 色、不支援半透明。</li>
+<li><strong>目前畫面 PNG：</strong>當下預覽的一張靜態圖片，可保留半透明。</li>
+<li><strong>動畫 PNG 圖集：</strong>把連續影格排列成一張靜態圖片，需由遊戲或動畫程式播放。</li>
+<li><strong>WebM：</strong>錄製一輪無聲影片；透明區會使用所選背景色，不直接輸出 MP4。</li>
+</ul>
+<p>柔和發光使用透明 GIF 可能變成硬邊或消失，建議改選純色背景。WebM 錄製時請保持頁面在前景，效能不足可能掉格。</p>
+<p>4K 只是增加輸出像素，不會自動補出原圖缺少的細節。先用小尺寸確認，再提高解析度。</p>
+</details>
+
+<details>
+<summary>四向角色：先放待機，再放走路與奔跑</summary>
+<ol>
+<li>選「正面／向下」及「待機」，匯入一張正面圖片。</li>
+<li>對背面、左側、右側重複操作。</li>
+<li>選方向及「走路」，匯入這個方向的連續走路影格。</li>
+<li>其他方向也加入各自走路影格。</li>
+<li>有奔跑素材時，再加入各方向奔跑影格。</li>
+</ol>
+<p>素材需要分割或去背時，可先在動畫區處理，再用「加入目前動畫影格」或「加入全部動畫影格」。此操作加入的是處理後的影格圖片，不包含疊加文字或特效。</p>
+<p><strong>正面鏡像不能變成背面；工具不會產生缺少的角度或步態。</strong></p>
+</details>
+
+<details>
+<summary>角色對齊、鍵盤操控與動畫抖動</summary>
+<ol>
+<li>統一畫格尺寸，例如 256 × 256。</li>
+<li>一般角色可選「腳底對齊」，並調整每組大小、水平及垂直位置。</li>
+<li>原素材已使用相同畫布與定位時，請勿勾「忽略透明留白」。</li>
+<li>按「啟用鍵盤操控」，點一下操控畫布。</li>
+</ol>
+<ul>
+<li>方向鍵／WASD：走路。</li>
+<li>Shift＋方向鍵／WASD：奔跑。</li>
+<li>放開按鍵：待機。</li>
+<li>方向按鈕：也能控制移動；勾選按鈕奔跑可加速。</li>
+</ul>
+<p>缺少奔跑會優先沿用走路；缺少待機可能使用其他動作第一格。只有一張圖時是靜態姿勢移動。沒有該方向素材時會顯示提示框。</p>
+<p>腳底對齊根據圖片或不透明範圍底部，不會辨識真實腳部。每格裁切與縮放不同，可能造成抖動，應優先統一原始素材定位。</p>
+</details>
+
+<details>
+<summary>四向 PNG、動作圖集與角色 GIF</summary>
+<ul>
+<li>四向 PNG：取四個方向待機第一格。</li>
+<li>橫排順序：正面、背面、左側、右側。</li>
+<li>2 × 2 順序：左上正面、右上背面、左下左側、右下右側。</li>
+<li>目前動作 PNG 圖集：只輸出選定方向與動作的全部影格。</li>
+</ul>
+<p>角色動作要做成 GIF：按「複製目前動作到動畫區」，再到動畫輸出区生成 GIF。影格會追加到現有動畫後面，不會自動清空舊動畫。</p>
+<p>角色在操控區的移動路徑不會自動錄入動畫。PNG 圖集不包含移動、碰撞或鍵盤操控程式。</p>
+</details>
+
+<details>
+<summary>專案保存、讀取及資料安全</summary>
+<ol>
+<li>按「建立專案存檔」。</li>
+<li>完成後按「下載專案 JSON」。</li>
+<li>下次開啟 HTML，按「讀取專案」選擇 JSON。</li>
+</ol>
+<p>專案保存動畫影格、逐格時間、文字與圖片圖層、四向動作素材及設定。原始影片、播放進度及復原紀錄不保存。</p>
+<p><strong>讀取專案會取代目前資料；操作前請先保存正在編輯的內容。</strong></p>
+<p>修改內容後，舊下載連結會失效，請重新生成或建立存檔。關閉頁面前請下載，工具沒有自動儲存。</p>
+<p>本版專案格式為 local-animation-studio、version 2，不讀取第 1 版 JSON。</p>
+</details>
+
+<details>
+<summary>常見問題與效能限制</summary>
+<ul>
+<li>GIF 無法生成：確認可以連網載入 jsDelivr 的 gifenc 套件；公司網路可能封鎖 CDN。</li>
+<li>下載找不到：查看瀏覽器下載紀錄或電腦的下載資料夾。</li>
+<li>影片無法播放：改用 MP4（H.264）；副檔名相同也可能採用不同編碼。</li>
+<li>去背誤刪：復原、降低容差，或改用橡皮擦。</li>
+<li>字幕不出現：檢查顯示範圍、位置、不透明度，以及是否綁定已刪除影格。</li>
+<li>角色不動：先點操控畫布；確認不是在文字欄位輸入。</li>
+<li>角色會移動但沒有走路：需要匯入連續走路影格。</li>
+<li>大型工作卡頓：減少影格、縮短片段、降低尺寸，避免同時開啟多個工具頁。</li>
+</ul>
+<p>保護限制：單張素材單邊最多 8192、1600 萬像素；素材總量最多 1 億像素；動畫及角色影格合計最多 1200；單次抽格最多 600 格、8000 萬像素；圖集單邊最多 16384、總計 3200 萬像素；專案最多 150 MB。</p>
+<p>這些是程式上限，不代表所有裝置都能順利處理到上限。工具不提供 AI 生圖、新角度、動作遷移、骨架綁定、補幀或語音合成。</p>
+</details>
+</section>
+
+<div class="statusbar">
+<progress id="progress" max="100" value="0"></progress>
+<div class="row" style="margin:0"><button id="cancel" hidden>取消目前工作</button><span id="status" role="status">請加入圖片、影片或角色素材。第一次使用可先看完整教學。</span></div>
+</div>
+</main>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const sleep=(ms=0)=>new Promise(r=>setTimeout(r,ms));
+function canvas(w,h){
+ const c=document.createElement("canvas");c.width=w;c.height=h;
+ if(!c.getContext("2d"))throw Error("無法建立畫布，請減少素材或降低尺寸。");
+ return c;
+}
+function num(id,a,b,f){
+ const raw=$(id).value,v=raw===""?f:Number(raw);
+ return clamp(Number.isFinite(v)?v:f,a,b);
+}
+const integer=(id,a,b,f)=>Math.round(num(id,a,b,f));
+const delay=v=>Math.round(clamp(Number(v)||100,20,10000)/10)*10;
+const dirs=["down","up","left","right"],actions=["idle","walk","run"];
+const dirName={down:"正面",up:"背面",left:"左側",right:"右側"};
+const actionName={idle:"待機",walk:"走路",run:"奔跑"};
+const layerName={image:"圖像",bubble:"對話氣泡",subtitle:"對白字幕",narration:"自述旁白"};
+const MAX_PIXELS=100000000,MAX_ITEMS=1200;
+let assets=new Map(),assetUID=0,frameUID=0,layerUID=0;
+let frames=[],selected=-1,layers=[],activeLayer=null;
+let actor=makeActor(),actorSelected=-1;
+let busy=false,cancelled=false,gesture=null,tool="pick";
+let playing=false,position=0,playElapsed=0,dragId=null;
+let videoURL=null,videoName="",encoder=null,unsaved=false;
+const urls={};
+const editor=$("editor"),ec=editor.getContext("2d");
+const preview=$("preview"),pc=preview.getContext("2d");
+const video=$("sourceVideo"),game=$("game"),gc=game.getContext("2d");
+const actorCell=canvas(256,256),ac=actorCell.getContext("2d");
+let actorMode="preview",facing="down",gx=400,gy=210,actorElapsed=0,actorKey="";
+let shift=false;
+const keys=new Map(),touchKeys=new Map();
+
+function makeActor(){
+ const a={};
+ for(const d of dirs){a[d]={};for(const k of actions)a[d][k]={items:[],ms:k==="run"?70:120,scale:90,x:0,y:0};}
+ return a;
+}
+function message(text){$("status").textContent=text;}
+function check(){if(cancelled)throw Error("已取消；已完成的批次修改仍會保留。");}
+function current(){return frames[selected];}
+function currentLayer(){return layers.find(l=>l.id===activeLayer);}
+function clip(){return actor[$("actorDir").value][$("actorAction").value];}
+function img(id){const a=assets.get(id);if(!a)throw Error("找不到素材。");return a.c;}
+function pause(){playing=false;$("play").textContent="播放";}
+function clearKeys(){keys.clear();touchKeys.clear();shift=false;}
+function allowed(){
+ if(busy||gesture)return false;
+ if(!frames.length){message("請先加入動畫影格。");return false;}
+ return true;
+}
+function lock(value){
+ busy=value;
+ document.querySelectorAll("button,input,select,textarea").forEach(e=>e.disabled=value);
+ $("cancel").hidden=!value;$("cancel").disabled=false;
+ video.controls=!value;
+ if(value){cancelled=false;pause();clearKeys();video.pause();$("progress").value=0;}
+}
+async function job(fn){
+ if(busy||gesture)return;
+ lock(true);
+ try{await fn();}
+ catch(e){console.error(e);message(e.message||String(e));}
+ finally{collectAssets();lock(false);refresh();refreshActor();}
+}
+$("cancel").onclick=()=>{cancelled=true;message("將在目前處理步驟完成後取消。");};
+
+function revoke(kind){
+ const a=$(kind+"Download");
+ if(a){a.hidden=true;a.removeAttribute("href");}
+ if(kind==="gif"){$("gifResult").hidden=true;$("gifImage").removeAttribute("src");}
+ if(kind==="webm"){
+  const v=$("videoResult");v.pause();v.hidden=true;v.removeAttribute("src");v.load();
+ }
+ if(urls[kind])URL.revokeObjectURL(urls[kind]);
+ delete urls[kind];
+}
+function invalidate(){
+ for(const k of ["project","gif","png","webm","atlas","four","actor"])revoke(k);
+}
+function changed(){unsaved=true;invalidate();drawPreview();}
+function publish(kind,blob,name){
+ revoke(kind);const url=URL.createObjectURL(blob);urls[kind]=url;
+ const a=$(kind+"Download");a.href=url;a.download=name;a.hidden=false;
+ if(kind==="gif"){$("gifImage").src=url;$("gifResult").hidden=false;}
+ if(kind==="webm"){$("videoResult").src=url;$("videoResult").hidden=false;}
+}
+$("projectDownload").addEventListener("click",()=>{unsaved=false;});
+window.addEventListener("beforeunload",e=>{
+ if(unsaved||busy){e.preventDefault();e.returnValue="";}
+});
+
+function references(undo=true){
+ const set=new Set();
+ for(const f of frames){set.add(f.asset);set.add(f.original);if(undo&&f.undo)set.add(f.undo);}
+ for(const l of layers)if(l.asset)set.add(l.asset);
+ for(const d of dirs)for(const a of actions)for(const id of actor[d][a].items)set.add(id);
+ return set;
+}
+function collectAssets(){
+ const used=references();
+ for(const id of assets.keys())if(!used.has(id))assets.delete(id);
+}
+function countItems(){
+ let count=frames.length;
+ for(const d of dirs)for(const a of actions)count+=actor[d][a].items.length;
+ return count;
+}
+function checkItems(extra){
+ if(countItems()+extra>MAX_ITEMS)throw Error("動畫與角色影格合計上限 1200，請減少素材。");
+}
+function addAsset(c,name="素材"){
+ if(!c.width||!c.height||c.width>8192||c.height>8192||c.width*c.height>16000000)
+  throw Error("單張素材限制單邊 8192、1600 萬像素，請先縮小。");
+ let pixels=c.width*c.height;
+ for(const a of assets.values())pixels+=a.c.width*a.c.height;
+ if(pixels>MAX_PIXELS)throw Error("素材總量超過 1 億像素，請減少素材或縮小圖片。");
+ const id=++assetUID;
+ assets.set(id,{c,name:String(name).slice(0,300),bounds:undefined});
+ return id;
+}
+function copyCanvas(c){
+ const out=canvas(c.width,c.height);
+ out.getContext("2d").drawImage(c,0,0);return out;
+}
+function frame(id,time=100){
+ return {id:++frameUID,asset:id,original:id,undo:null,ms:delay(time)};
+}
+function editFrame(f,c){
+ const id=addAsset(c,assets.get(f.asset).name);
+ f.undo=f.asset;f.asset=id;
+}
+function bounds(id){
+ const a=assets.get(id);
+ if(a.bounds!==undefined)return a.bounds;
+ const c=a.c,data=c.getContext("2d").getImageData(0,0,c.width,c.height).data;
+ let left=c.width,top=c.height,right=-1,bottom=-1;
+ for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
+  if(!data[(y*c.width+x)*4+3])continue;
+  left=Math.min(left,x);right=Math.max(right,x);
+  top=Math.min(top,y);bottom=Math.max(bottom,y);
+ }
+ return a.bounds=right<left?null:{x:left,y:top,w:right-left+1,h:bottom-top+1};
+}
+function decode(url){
+ return new Promise((resolve,reject)=>{
+  const im=new Image();
+  im.onload=()=>{
+   try{
+    const w=im.naturalWidth,h=im.naturalHeight;
+    if(!w||!h||w>8192||h>8192||w*h>16000000)throw Error("圖片尺寸超過限制，請縮小。");
+    const c=canvas(w,h),ctx=c.getContext("2d");
+    ctx.drawImage(im,0,0);ctx.getImageData(0,0,1,1);resolve(c);
+   }catch(e){reject(e);}
+  };
+  im.onerror=()=>reject(Error("圖片無法解碼，請改用 PNG／JPG。"));
+  im.src=url;
+ });
+}
+async function fileCanvas(file){
+ const url=URL.createObjectURL(file);
+ try{return await decode(url);}finally{URL.revokeObjectURL(url);}
+}
+function png(c){
+ return new Promise((resolve,reject)=>c.toBlob(b=>b?resolve(b):reject(Error("PNG 編碼失敗，請降低尺寸。")),"image/png"));
+}
+function fit(ctx,c,w,h){
+ const s=Math.min(w/c.width,h/c.height);
+ ctx.drawImage(c,(w-c.width*s)/2,(h-c.height*s)/2,c.width*s,c.height*s);
+}
+function sortedFiles(files){
+ return Array.from(files).sort((a,b)=>a.name.localeCompare(b.name,"zh-Hant",{numeric:true}));
+}
+
+/* 輸出尺寸、播放序列 */
+function normalizeSize(w,h){
+ const s=Math.min(1,3840/Math.max(w,h),2160/Math.min(w,h));
+ return {w:Math.max(16,Math.floor(w*s)),h:Math.max(16,Math.floor(h*s))};
+}
+function size(){
+ return normalizeSize(integer("width",16,3840,640),integer("height",16,3840,360));
+}
+function setSize(w,h){
+ const s=normalizeSize(w,h);
+ $("width").value=s.w;$("height").value=s.h;$("resolution").value="custom";
+}
+function baseCount(){
+ return frames.length===1&&$("fx").value!=="none"?integer("fxFrames",4,120,24):frames.length;
+}
+function sequence(){
+ const a=Array.from({length:baseCount()},(_,i)=>i);
+ if($("playOrder").value==="reverse")return a.reverse();
+ if($("playOrder").value==="pingpong"&&a.length>2)return a.concat(a.slice(1,-1).reverse());
+ return a;
+}
+function source(index){return frames[frames.length===1?0:index];}
+function previewIndex(){
+ const seq=sequence();return seq.length?seq[position%seq.length]:0;
+}
+function align(){
+ position=Math.max(0,sequence().indexOf(frames.length===1?0:selected));playElapsed=0;
+}
+function options(){
+ return {fx:$("fx").value,color:$("fxColor").value,power:Number($("power").value)/100,
+ scale:Number($("scale").value)/100,pixel:$("pixel").checked,
+ bg:$("outputBg").value,bgColor:$("outputColor").value};
+}
+
+/* 圖層 */
+function makeLayer(type){
+ return {id:++layerUID,type,asset:null,scope:"all",frameId:current()?.id||null,
+ from:1,to:Math.max(1,frames.length),speaker:"",
+ text:type==="bubble"?"請輸入對話":type==="subtitle"?"請輸入台詞":"請輸入自述或旁白",
+ x:50,y:type==="image"?50:type==="bubble"?25:85,
+ width:type==="image"?25:type==="bubble"?50:86,opacity:100,fontSize:5,
+ font:"sans",bold:true,align:type==="subtitle"?"center":"left",
+ color:type==="bubble"?"#172033":"#ffffff",fill:type==="bubble"?"#ffffff":"#172033"};
+}
+const layerNumbers={layerX:"x",layerY:"y",layerWidth:"width",layerOpacity:"opacity",fontSize:"fontSize",rangeStart:"from",rangeEnd:"to"};
+const layerStrings={speaker:"speaker",layerText:"text",fontFamily:"font",textAlign:"align",textColor:"color",fillColor:"fill"};
+function showScope(){
+ const l=currentLayer();if(!l)return;
+ let text="全部影格";
+ if(l.scope==="frame"){
+  const i=frames.findIndex(f=>f.id===l.frameId);
+  text=i<0?"綁定影格已不存在，請重新綁定":"綁定第 "+(i+1)+" 格";
+ }
+ if(l.scope==="range")text=l.from<=l.to?"第 "+l.from+"～"+l.to+" 格":"起始格不能大於結束格";
+ $("scopeInfo").textContent=text;
+}
+function syncLayer(){
+ const l=currentLayer();$("layerControls").hidden=!l;
+ if(!l)return;
+ $("textFields").hidden=l.type==="image";
+ for(const [id,key] of Object.entries({...layerNumbers,...layerStrings}))$(id).value=l[key];
+ $("bold").checked=l.bold;$("layerScope").value=l.scope;showScope();
+}
+function listLayers(){
+ const select=$("layerList");select.replaceChildren();
+ if(!layers.length)select.add(new Option("尚無圖層",""));
+ else{
+  layers.forEach((l,i)=>select.add(new Option((i+1)+". "+layerName[l.type],l.id)));
+  select.value=activeLayer;
+ }
+ syncLayer();
+}
+function addText(type){
+ if(!allowed())return;
+ if(layers.length>=500)return message("圖層上限 500。");
+ const l=makeLayer(type);layers.push(l);activeLayer=l.id;
+ listLayers();changed();
+}
+$("addBubble").onclick=()=>addText("bubble");
+$("addSubtitle").onclick=()=>addText("subtitle");
+$("addNarration").onclick=()=>addText("narration");
+$("addImageLayer").onclick=()=>{if(allowed())$("layerFile").click();};
+$("layerFile").onchange=async e=>{
+ const file=e.target.files[0];e.target.value="";
+ if(!file||!allowed())return;
+ await job(async()=>{
+  if(layers.length>=500)throw Error("圖層上限 500。");
+  const c=await fileCanvas(file);check();
+  const l=makeLayer("image");l.asset=addAsset(c,file.name);
+  layers.push(l);activeLayer=l.id;listLayers();changed();message("已加入圖像圖層。");
+ });
+};
+$("layerList").onchange=()=>{
+ if(busy||gesture)return;activeLayer=Number($("layerList").value)||null;syncLayer();
+};
+for(const [id,key] of Object.entries(layerNumbers))$(id).oninput=()=>{
+ const l=currentLayer();if(!l||busy||gesture)return;
+ if(key==="from"||key==="to")l[key]=integer(id,1,1200,1);
+ else l[key]=Number($(id).value);
+ showScope();changed();
+};
+for(const [id,key] of Object.entries(layerStrings))$(id).oninput=()=>{
+ const l=currentLayer();if(!l||busy||gesture)return;l[key]=$(id).value;changed();
+};
+$("bold").onchange=()=>{
+ const l=currentLayer();if(l&&!busy&&!gesture){l.bold=$("bold").checked;changed();}
+};
+$("layerScope").onchange=()=>{
+ const l=currentLayer();if(!l||!allowed())return;
+ l.scope=$("layerScope").value;
+ if(l.scope==="frame")l.frameId=current().id;
+ showScope();changed();
+};
+$("bindLayer").onclick=()=>{
+ const l=currentLayer();if(!l||!allowed())return;
+ l.scope="frame";l.frameId=current().id;pause();align();syncLayer();changed();
+};
+function moveLayer(step){
+ if(busy||gesture)return;
+ const i=layers.findIndex(l=>l.id===activeLayer),j=i+step;
+ if(i<0||j<0||j>=layers.length)return;
+ [layers[i],layers[j]]=[layers[j],layers[i]];listLayers();changed();
+}
+$("layerBack").onclick=()=>moveLayer(-1);
+$("layerFront").onclick=()=>moveLayer(1);
+$("layerCopy").onclick=()=>{
+ const l=currentLayer();if(!l||busy||gesture)return;
+ if(layers.length>=500)return message("圖層上限 500。");
+ const copy={...l,id:++layerUID};layers.push(copy);activeLayer=copy.id;listLayers();changed();
+};
+$("layerDelete").onclick=()=>{
+ if(busy||gesture)return;
+ const i=layers.findIndex(l=>l.id===activeLayer);if(i<0)return;
+ layers.splice(i,1);activeLayer=layers[Math.min(i,layers.length-1)]?.id||null;
+ listLayers();changed();collectAssets();
+};
+function rounded(ctx,x,y,w,h,r){
+ r=Math.max(0,Math.min(r,w/2,h/2));
+ ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+ ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
+ ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+ ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
+ ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+function wrapText(ctx,text,width){
+ const out=[];
+ for(const p of text.replace(/\r/g,"").split("\n")){
+  if(!p){out.push("");continue;}
+  let line="";
+  for(const char of Array.from(p)){
+   if(line&&ctx.measureText(line+char).width>width){out.push(line);line=char;}
+   else line+=char;
+  }
+  out.push(line);
+ }
+ return out;
+}
+function drawText(ctx,l,w,h){
+ const fs=Math.min(w,h)*l.fontSize/100,pad=fs*.65,bw=w*l.width/100;
+ ctx.font=(l.bold?"700 ":"400 ")+fs+"px "+(l.font==="serif"?'"PMingLiU",serif':'"Microsoft JhengHei","PingFang TC",sans-serif');
+ ctx.textAlign=l.align;ctx.textBaseline="middle";ctx.lineJoin="round";
+ const text=(l.speaker.trim()?l.speaker.trim()+"：":"")+l.text;
+ if(!text.trim())return;
+ const lines=wrapText(ctx,text,Math.max(1,bw-pad*2)),lh=fs*1.4,bh=lines.length*lh+pad*2;
+ const x=w*l.x/100-bw/2,y=h*l.y/100-bh/2;
+ if(l.type==="bubble"){
+  ctx.fillStyle=l.fill;ctx.strokeStyle=l.color;ctx.lineWidth=Math.max(.5,fs*.05);
+  rounded(ctx,x,y,bw,bh,fs*.5);ctx.fill();ctx.stroke();
+  const tx=x+bw*.3,tw=Math.min(fs,bw*.2);
+  ctx.beginPath();ctx.moveTo(tx,y+bh-1);ctx.lineTo(tx+tw*.25,y+bh+fs*.8);
+  ctx.lineTo(tx+tw,y+bh-1);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(tx,y+bh);ctx.lineTo(tx+tw*.25,y+bh+fs*.8);
+  ctx.lineTo(tx+tw,y+bh);ctx.stroke();
+ }else if(l.type==="narration"){
+  ctx.fillStyle=l.fill;rounded(ctx,x,y,bw,bh,fs*.25);ctx.fill();
+ }
+ const tx=l.align==="center"?x+bw/2:l.align==="right"?x+bw-pad:x+pad;
+ ctx.save();ctx.beginPath();ctx.rect(x,y,bw,bh);ctx.clip();ctx.fillStyle=l.color;
+ lines.forEach((line,i)=>{
+  const ty=y+pad+lh*(i+.5);
+  if(l.type==="subtitle"){ctx.strokeStyle=l.fill;ctx.lineWidth=fs*.13;ctx.strokeText(line,tx,ty);}
+  ctx.fillText(line,tx,ty);
+ });
+ ctx.restore();
+}
+function drawLayers(ctx,w,h,index,opt){
+ const f=source(index),number=frames.length===1?1:index+1;
+ for(const l of layers){
+  if(l.scope==="frame"&&l.frameId!==f.id)continue;
+  if(l.scope==="range"&&(number<l.from||number>l.to))continue;
+  if(l.opacity<=0)continue;
+  ctx.save();ctx.globalAlpha=l.opacity/100;ctx.imageSmoothingEnabled=!opt.pixel;
+  if(l.type==="image"){
+   const c=img(l.asset),dw=w*l.width/100,dh=dw*c.height/c.width;
+   ctx.drawImage(c,w*l.x/100-dw/2,h*l.y/100-dh/2,dw,dh);
+  }else drawText(ctx,l,w,h);
+  ctx.restore();
+ }
+}
+
+/* 畫面繪製 */
+function drawEffects(ctx,w,h,phase,o){
+ const s=Math.min(w,h),angle=phase*Math.PI*2,p=o.power;
+ ctx.save();ctx.strokeStyle=o.color;ctx.fillStyle=o.color;ctx.lineCap="round";
+ if(o.fx==="sparks"){
+  const count=Math.round(6+p*16);
+  for(let i=0;i<count;i++){
+   const a=angle+i/count*Math.PI*2,r=s*(.24+.1*Math.sin(i*2.3+angle));
+   const x=w/2+Math.cos(a)*r,y=h/2+Math.sin(a)*r*.85;
+   const k=s*(.004+.016*p*(.5+.5*Math.sin(angle*2+i)));
+   ctx.lineWidth=Math.max(1,s*.004);ctx.beginPath();
+   ctx.moveTo(x-k,y);ctx.lineTo(x+k,y);ctx.moveTo(x,y-k);ctx.lineTo(x,y+k);ctx.stroke();
+  }
+ }
+ if(o.fx==="magic"){
+  const r=s*(.25+p*.12);
+  ctx.translate(w/2,h*.78);ctx.scale(1,.38);ctx.rotate(angle);ctx.lineWidth=Math.max(1,s*.005);
+  for(const v of [r,r*.8]){ctx.beginPath();ctx.arc(0,0,v,0,Math.PI*2);ctx.stroke();}
+  for(let k=0;k<2;k++){
+   ctx.beginPath();
+   for(let j=0;j<3;j++){
+    const a=j*Math.PI*2/3+k*Math.PI/3,x=Math.cos(a)*r*.74,y=Math.sin(a)*r*.74;
+    if(j)ctx.lineTo(x,y);else ctx.moveTo(x,y);
+   }
+   ctx.closePath();ctx.stroke();
+  }
+ }
+ if(o.fx==="speed"){
+  const count=Math.round(5+p*13),len=w*(.08+p*.2);
+  for(let i=0;i<count;i++){
+   const t=(phase+(i*.61803398875)%1)%1,x=w+len-t*(w+len*2),y=h*(.08+.84*((i*.38196601125)%1));
+   ctx.lineWidth=Math.max(1,s*(.002+.003*(i%3+1)));
+   ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+len,y);ctx.stroke();
+  }
+ }
+ ctx.restore();
+}
+function render(ctx,w,h,index,total,o){
+ const f=source(index);if(!f)return;
+ const c=img(f.asset);
+ ctx.save();ctx.clearRect(0,0,w,h);
+ if(o.bg==="solid"){ctx.fillStyle=o.bgColor;ctx.fillRect(0,0,w,h);}
+ const scale=Math.min(w/c.width,h/c.height)*o.scale,dw=c.width*scale,dh=c.height*scale;
+ const phase=index/Math.max(1,total);
+ ctx.imageSmoothingEnabled=!o.pixel;ctx.imageSmoothingQuality="high";
+ if(o.fx==="glow"){
+  ctx.shadowColor=o.color;
+  ctx.shadowBlur=Math.min(w,h)*(.015+.07*o.power*(.5+.5*Math.sin(phase*Math.PI*2)));
+ }
+ ctx.drawImage(c,(w-dw)/2,(h-dh)/2,dw,dh);
+ ctx.shadowBlur=0;ctx.shadowColor="transparent";
+ drawEffects(ctx,w,h,phase,o);drawLayers(ctx,w,h,index,o);ctx.restore();
+}
+function drawPreview(){
+ const {w,h}=size(),scale=Math.min(1,800/Math.max(w,h));
+ const pw=Math.max(1,Math.round(w*scale)),ph=Math.max(1,Math.round(h*scale));
+ if(preview.width!==pw||preview.height!==ph){preview.width=pw;preview.height=ph;}
+ pc.clearRect(0,0,pw,ph);
+ const seq=sequence(),duration=seq.reduce((sum,i)=>sum+source(i).ms,0);
+ $("outputInfo").textContent=w+" × "+h+"｜"+seq.length+" 格｜約 "+(duration/1000).toFixed(2)+" 秒";
+ if(!seq.length){$("previewInfo").textContent="";return;}
+ position%=seq.length;const index=previewIndex();
+ render(pc,pw,ph,index,baseCount(),options());
+ $("previewInfo").textContent="播放位置 "+(position+1)+"/"+seq.length+"｜來源第 "+(frames.length===1?1:index+1)+" 格";
+}
+function drawEditor(rect=null){
+ const f=current();
+ if(!f){ec.clearRect(0,0,editor.width,editor.height);return;}
+ const c=img(f.asset),scale=Math.min(1,1200/Math.max(c.width,c.height));
+ const w=Math.max(1,Math.round(c.width*scale)),h=Math.max(1,Math.round(c.height*scale));
+ if(editor.width!==w||editor.height!==h){editor.width=w;editor.height=h;}
+ ec.clearRect(0,0,w,h);ec.drawImage(c,0,0,w,h);
+ if(rect){
+  ec.save();ec.lineWidth=2*w/Math.max(1,editor.clientWidth);
+  ec.strokeStyle="#1686ff";ec.fillStyle="rgba(22,134,255,.18)";
+  const r=[rect.x*w/c.width,rect.y*h/c.height,rect.w*w/c.width,rect.h*h/c.height];
+  ec.fillRect(...r);ec.strokeRect(...r);ec.restore();
+ }
+}
+function thumb(asset,label,isSelected,onclick){
+ const box=document.createElement("div");box.className="thumb"+(isSelected?" selected":"");
+ const c=canvas(168,136);c.className="checker";fit(c.getContext("2d"),img(asset),168,136);
+ const text=document.createElement("div");text.textContent=label;
+ box.append(c,text);box.onclick=onclick;return box;
+}
+function refresh(){
+ $("frames").replaceChildren();
+ frames.forEach((f,i)=>{
+  const box=thumb(f.asset,(i+1)+"｜"+f.ms+"ms",i===selected,()=>{
+   if(busy||gesture)return;selected=i;pause();align();refresh();
+  });
+  box.draggable=true;
+  box.ondragstart=e=>{
+   if(busy||gesture){e.preventDefault();return;}
+   dragId=f.id;e.dataTransfer.setData("text/plain",String(f.id));
+  };
+  box.ondragover=e=>{if(dragId!==null&&!busy)e.preventDefault();};
+  box.ondrop=e=>{
+   if(busy||gesture||dragId===null)return;
+   e.preventDefault();e.stopPropagation();
+   const from=frames.findIndex(x=>x.id===dragId),to=frames.indexOf(f);
+   if(from<0||from===to)return;
+   const id=current()?.id,[moved]=frames.splice(from,1);
+   frames.splice(to,0,moved);selected=frames.findIndex(x=>x.id===id);
+   dragId=null;align();changed();refresh();
+  };
+  box.ondragend=()=>dragId=null;$("frames").append(box);
+ });
+ $("frameInfo").textContent=frames.length?"共 "+frames.length+" 格｜選取第 "+(selected+1)+" 格":"尚無影格";
+ if(current())$("frameDelay").value=current().ms;
+ position%=Math.max(1,sequence().length);
+ drawEditor();drawPreview();showScope();$("gridBox").hidden=true;
+}
+
+/* 圖片與影格管理 */
+async function importImages(files){
+ files=sortedFiles(files);if(!files.length||busy||gesture)return;
+ await job(async()=>{
+  checkItems(files.length);let added=0;const errors=[];
+  for(let i=0;i<files.length;i++){
+   check();message("匯入圖片 "+(i+1)+"/"+files.length);await sleep();
+   try{
+    const c=await fileCanvas(files[i]);check();
+    const id=addAsset(c,files[i].name);frames.push(frame(id,integer("defaultDelay",20,10000,100)));
+    if(selected<0){selected=0;setSize(c.width,c.height);}
+    if(!added)changed();added++;
+   }catch(e){if(cancelled)throw e;errors.push(files[i].name+"："+e.message);}
+   $("progress").value=(i+1)/files.length*100;
+  }
+  align();message("已新增 "+added+" 格。"+(errors.length?"\n"+errors.join("\n"):""));
+ });
+}
+$("drop").onclick=()=>{if(!busy&&!gesture)$("imageFiles").click();};
+$("drop").onkeydown=e=>{
+ if((e.key==="Enter"||e.key===" ")&&!busy&&!gesture){e.preventDefault();$("imageFiles").click();}
+};
+$("imageFiles").onchange=async e=>{
+ const files=Array.from(e.target.files);e.target.value="";await importImages(files);
+};
+for(const event of ["dragenter","dragover"])$("drop").addEventListener(event,e=>{
+ e.preventDefault();if(!busy)$("drop").classList.add("over");
+});
+$("drop").ondragleave=()=>$("drop").classList.remove("over");
+$("drop").ondrop=e=>{
+ e.preventDefault();$("drop").classList.remove("over");importImages(e.dataTransfer.files);
+};
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("drop",e=>e.preventDefault());
+function moveFrame(step){
+ if(!allowed())return;const j=selected+step;
+ if(j<0||j>=frames.length)return;
+ [frames[selected],frames[j]]=[frames[j],frames[selected]];selected=j;
+ align();changed();refresh();
+}
+$("frameLeft").onclick=()=>moveFrame(-1);
+$("frameRight").onclick=()=>moveFrame(1);
+$("frameCopy").onclick=()=>{
+ if(!allowed())return;
+ try{
+  checkItems(1);const f=current();
+  frames.splice(selected+1,0,frame(f.asset,f.ms));selected++;align();changed();refresh();
+ }catch(e){message(e.message);}
+};
+$("frameDelete").onclick=()=>{
+ if(!allowed())return;
+ frames.splice(selected,1);selected=Math.min(selected,frames.length-1);
+ align();changed();collectAssets();refresh();
+};
+$("clearAnimation").onclick=()=>{
+ if(busy||gesture||!confirm("清空動畫影格與疊加圖層？角色素材會保留。"))return;
+ frames=[];layers=[];selected=-1;activeLayer=null;position=0;
+ pause();changed();collectAssets();listLayers();refresh();
+};
+$("setFrameDelay").onclick=()=>{
+ if(allowed()){current().ms=delay($("frameDelay").value);changed();refresh();}
+};
+$("setAllDelay").onclick=()=>{
+ if(!allowed())return;
+ const time=delay($("defaultDelay").value);frames.forEach(f=>f.ms=time);changed();refresh();
+};
+
+/* 影片載入與定位 */
+function waitVideo(ready,events,action){
+ return new Promise((resolve,reject)=>{
+  let done=false,timer,poll;
+  function clean(){
+   clearTimeout(timer);clearInterval(poll);
+   events.forEach(t=>video.removeEventListener(t,test));video.removeEventListener("error",fail);
+  }
+  function finish(e){if(done)return;done=true;clean();e?reject(e):resolve();}
+  function test(){
+   if(cancelled)return finish(Error("已取消影片處理。"));
+   if(ready())finish();
+  }
+  function fail(){finish(Error("影片無法解碼，請改用 MP4（H.264）。"));}
+  events.forEach(t=>video.addEventListener(t,test));video.addEventListener("error",fail);
+  timer=setTimeout(()=>finish(Error("影片載入或定位逾時。")),20000);
+  poll=setInterval(test,100);
+  try{action?.();test();}catch(e){finish(e);}
+ });
+}
+function clearVideo(){
+ video.pause();video.removeAttribute("src");video.load();video.hidden=true;
+ if(videoURL)URL.revokeObjectURL(videoURL);
+ videoURL=null;videoName="";$("videoInfo").textContent="尚未載入影片";
+}
+$("chooseVideo").onclick=()=>{if(!busy&&!gesture)$("videoFile").click();};
+$("videoFile").onchange=async e=>{
+ const file=e.target.files[0];e.target.value="";if(!file)return;
+ await job(async()=>{
+  clearVideo();videoURL=URL.createObjectURL(file);videoName=file.name;video.hidden=false;
+  try{
+   await waitVideo(()=>video.readyState>=1&&video.videoWidth>0,["loadedmetadata","loadeddata"],()=>{
+    video.src=videoURL;video.load();
+   });
+   check();
+   if(!Number.isFinite(video.duration)||video.duration<=0)throw Error("無法取得影片長度，請先轉檔。");
+   $("start").value=0;$("end").value=Math.min(3,video.duration).toFixed(3);
+   $("videoInfo").textContent=file.name+"｜"+video.videoWidth+" × "+video.videoHeight+"｜"+video.duration.toFixed(2)+" 秒";
+   message("影片已載入，設定起點、終點後擷取。");
+  }catch(e){clearVideo();throw e;}
+ });
+};
+$("markStart").onclick=()=>{if(!busy&&videoURL)$("start").value=video.currentTime.toFixed(3);};
+$("markEnd").onclick=()=>{if(!busy&&videoURL)$("end").value=video.currentTime.toFixed(3);};
+$("extract").onclick=async()=>{
+ if(busy||gesture)return;
+ if(!videoURL||!Number.isFinite(video.duration))return message("請先載入影片。");
+ const start=num("start",0,video.duration,0),end=num("end",0,video.duration,0);
+ if(end<=start)return message("結束時間必須大於開始時間。");
+ const fps=Number($("extractFps").value),limit=Number($("extractSize").value);
+ const scale=Math.min(1,limit/Math.max(video.videoWidth,video.videoHeight));
+ const w=Math.max(1,Math.round(video.videoWidth*scale)),h=Math.max(1,Math.round(video.videoHeight*scale));
+ const count=Math.ceil((end-start)*fps-1e-8);
+ if(count>600||count*w*h>80000000)return message("單次抽格上限 600 格／8000 萬像素，請縮短片段或降低尺寸。");
+ await job(async()=>{
+  checkItems(count);const out=[],first=frames.length;
+  for(let i=0;i<count;i++){
+   check();message("擷取影片 "+(i+1)+"/"+count);
+   const t=Math.min(start+i/fps,Math.max(0,video.duration-.001));
+   await waitVideo(()=>!video.seeking&&video.readyState>=2&&Math.abs(video.currentTime-t)<.03,
+    ["seeked","loadeddata","canplay"],()=>{video.currentTime=t;});
+   check();const c=canvas(w,h);c.getContext("2d").drawImage(video,0,0,w,h);
+   out.push(frame(addAsset(c,videoName+"｜"+t.toFixed(3)+"秒"),1000/fps));
+   $("progress").value=(i+1)/count*100;await sleep();
+  }
+  check();frames.push(...out);selected=first;if(!first)setSize(w,h);
+  align();changed();message("已追加 "+out.length+" 格。影格時間以 10 毫秒為單位。");
+ });
+};
+
+/* 圖集分割 */
+function getCells(c){
+ const cols=integer("cols",1,50,4),rows=integer("rows",1,50,2);
+ const margin=integer("margin",0,5000,0),gapX=integer("gapX",0,5000,0),gapY=integer("gapY",0,5000,0);
+ const usableW=c.width-2*margin-gapX*(cols-1),usableH=c.height-2*margin-gapY*(rows-1);
+ if(usableW<cols||usableH<rows)throw Error("格數、留白或間距超出圖片範圍。");
+ const out=[];
+ function add(x,y){
+  out.push({x:margin+Math.floor(x*usableW/cols)+x*gapX,
+   y:margin+Math.floor(y*usableH/rows)+y*gapY,
+   w:Math.floor((x+1)*usableW/cols)-Math.floor(x*usableW/cols),
+   h:Math.floor((y+1)*usableH/rows)-Math.floor(y*usableH/rows)});
+ }
+ if($("order").value==="col"){
+  for(let x=0;x<cols;x++)for(let y=0;y<rows;y++)add(x,y);
+ }else{
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++)add(x,y);
+ }
+ return out;
+}
+$("showGrid").onclick=()=>{
+ if(!allowed())return;
+ try{
+  const src=img(current().asset),cells=getCells(src),c=$("gridCanvas");
+  const scale=Math.min(1,1400/Math.max(src.width,src.height));
+  c.width=Math.max(1,Math.round(src.width*scale));c.height=Math.max(1,Math.round(src.height*scale));
+  const ctx=c.getContext("2d");ctx.drawImage(src,0,0,c.width,c.height);
+  ctx.font="bold 18px sans-serif";ctx.lineWidth=2;
+  cells.forEach((r,i)=>{
+   const x=r.x*scale,y=r.y*scale;
+   ctx.strokeStyle="#ff365e";ctx.strokeRect(x,y,r.w*scale,r.h*scale);
+   ctx.fillStyle="#101722";ctx.fillRect(x+2,y+2,50,25);ctx.fillStyle="#fff";ctx.fillText(String(i+1),x+6,y+21);
+  });
+  $("gridBox").hidden=false;
+ }catch(e){message(e.message);}
+};
+$("split").onclick=async()=>{
+ if(!allowed())return;
+ let cells;try{cells=getCells(img(current().asset));}catch(e){return message(e.message);}
+ if(!confirm("分割將取代目前圖片，不能復原。繼續？"))return;
+ const f=current(),src=img(f.asset),skip=$("skipEmpty").checked;
+ await job(async()=>{
+  const out=[];
+  for(let i=0;i<cells.length;i++){
+   check();const r=cells[i],c=canvas(r.w,r.h);
+   c.getContext("2d").drawImage(src,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
+   let empty=false;
+   if(skip){
+    const data=c.getContext("2d").getImageData(0,0,r.w,r.h).data;
+    empty=true;for(let p=3;p<data.length;p+=4)if(data[p]){empty=false;break;}
+   }
+   if(!empty){
+    checkItems(out.length);
+    out.push(frame(addAsset(c,"分割影格 "+(i+1)),f.ms));
+   }
+   $("progress").value=(i+1)/cells.length*100;
+   if(i%8===0)await sleep();
+  }
+  if(!out.length)throw Error("全部格子透明，未變更原圖。");
+  check();frames.splice(selected,1,...out);
+  const c=img(out[0].asset);setSize(c.width,c.height);align();changed();
+  message("已分割 "+out.length+" 格。綁定原圖片的圖層請重新指定。");
+ });
+};
+for(const id of ["cols","rows","order","margin","gapX","gapY"])$(id).oninput=()=>{
+ if(busy||gesture)return;$("gridBox").hidden=true;changed();
+};
+
+/* 編輯工具 */
+const hints={
+ pick:"點背景取色，再按去背。",
+ erase:"拖曳擦除；筆刷單位為原圖像素，只處理目前影格。",
+ text:"框選後擦成透明，不會補回被遮住的內容。",
+ crop:"框出要保留的範圍，放開後剪裁。"
+};
+$("tools").onclick=e=>{
+ const button=e.target.closest("[data-tool]");
+ if(!button||busy||gesture)return;
+ tool=button.dataset.tool;
+ document.querySelectorAll("[data-tool]").forEach(b=>b.classList.toggle("active",b===button));
+ $("toolHint").textContent=hints[tool];
+};
+function point(e){
+ const rect=editor.getBoundingClientRect(),c=img(current().asset);
+ return {x:clamp((e.clientX-rect.left)*c.width/rect.width,0,c.width),
+ y:clamp((e.clientY-rect.top)*c.height/rect.height,0,c.height)};
+}
+function rectangle(a,b){
+ const x=Math.floor(Math.min(a.x,b.x)),y=Math.floor(Math.min(a.y,b.y));
+ return {x,y,w:Math.ceil(Math.max(a.x,b.x))-x,h:Math.ceil(Math.max(a.y,b.y))-y};
+}
+function erase(f,a,b){
+ const c=img(f.asset),ctx=c.getContext("2d");
+ ctx.save();ctx.globalCompositeOperation="destination-out";
+ ctx.lineWidth=Number($("brush").value);ctx.lineCap="round";
+ ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+ ctx.beginPath();ctx.arc(b.x,b.y,ctx.lineWidth/2,0,Math.PI*2);ctx.fill();ctx.restore();
+ assets.get(f.asset).bounds=undefined;
+}
+editor.onpointerdown=e=>{
+ if(busy||gesture||e.button!==0||!current())return;
+ e.preventDefault();const f=current(),p=point(e);
+ try{
+  if(tool==="pick"){
+   const c=img(f.asset),data=c.getContext("2d").getImageData(Math.min(c.width-1,Math.floor(p.x)),Math.min(c.height-1,Math.floor(p.y)),1,1).data;
+   if(!data[3])return message("此處已透明，請選取有顏色的背景。");
+   $("bg").value="#"+Array.from(data.slice(0,3)).map(v=>v.toString(16).padStart(2,"0")).join("");
+   changed();return;
+  }
+  if(tool==="erase")editFrame(f,copyCanvas(img(f.asset)));
+  editor.setPointerCapture(e.pointerId);
+  gesture={f,tool,start:p,last:p,id:e.pointerId};
+  if(tool==="erase"){erase(f,p,p);changed();drawEditor();}
+ }catch(error){message(error.message);}
+};
+editor.onpointermove=e=>{
+ if(!gesture||gesture.id!==e.pointerId)return;
+ const p=point(e);
+ if(gesture.tool==="erase"){erase(gesture.f,gesture.last,p);drawEditor();drawPreview();}
+ else drawEditor(rectangle(gesture.start,p));
+ gesture.last=p;
+};
+editor.onpointerup=async e=>{
+ if(!gesture||gesture.id!==e.pointerId)return;
+ const g=gesture,r=rectangle(g.start,point(e));gesture=null;
+ if(editor.hasPointerCapture(e.pointerId))editor.releasePointerCapture(e.pointerId);
+ if(g.tool==="erase"){collectAssets();refresh();refreshActor();return;}
+ if(r.w<2||r.h<2){drawEditor();return;}
+ const src=img(g.f.asset),sw=src.width,sh=src.height;
+ const targets=$("batch").checked?[...frames]:[g.f];
+ await job(async()=>{
+  changed();
+  for(let i=0;i<targets.length;i++){
+   check();const f=targets[i],old=img(f.asset),w=old.width,h=old.height;
+   const x=clamp(Math.round(r.x/sw*w),0,w-1),y=clamp(Math.round(r.y/sh*h),0,h-1);
+   const cw=clamp(Math.round((r.x+r.w)/sw*w),x+1,w)-x;
+   const ch=clamp(Math.round((r.y+r.h)/sh*h),y+1,h)-y;
+   let c;
+   if(g.tool==="text"){c=copyCanvas(old);c.getContext("2d").clearRect(x,y,cw,ch);}
+   else{c=canvas(cw,ch);c.getContext("2d").drawImage(old,x,y,cw,ch,0,0,cw,ch);}
+   editFrame(f,c);collectAssets();
+   $("progress").value=(i+1)/targets.length*100;await sleep();
+  }
+  message("已處理 "+targets.length+" 格。");
+ });
+};
+function cancelGesture(){
+ if(!gesture)return;gesture=null;collectAssets();refresh();refreshActor();
+}
+editor.onpointercancel=cancelGesture;
+editor.onlostpointercapture=cancelGesture;
+function removeBackground(c,rgb,tolerance,edge){
+ const ctx=c.getContext("2d"),im=ctx.getImageData(0,0,c.width,c.height);
+ const data=im.data,w=c.width,h=c.height,count=w*h,limit=tolerance*tolerance;
+ function match(i){
+  const p=i*4;if(!data[p+3])return true;
+  const r=data[p]-rgb[0],g=data[p+1]-rgb[1],b=data[p+2]-rgb[2];
+  return r*r+g*g+b*b<=limit;
+ }
+ if(!edge){
+  for(let i=0;i<count;i++)if(match(i))data[i*4+3]=0;
+ }else{
+  const seen=new Uint8Array(count),queue=new Uint32Array(count);let head=0,tail=0;
+  function add(i){
+   if(seen[i])return;seen[i]=1;
+   if(!match(i))return;queue[tail++]=i;data[i*4+3]=0;
+  }
+  for(let x=0;x<w;x++){add(x);add((h-1)*w+x);}
+  for(let y=0;y<h;y++){add(y*w);add(y*w+w-1);}
+  while(head<tail){
+   const i=queue[head++],x=i%w;
+   if(x>0)add(i-1);if(x<w-1)add(i+1);if(i>=w)add(i-w);if(i<w*(h-1))add(i+w);
+  }
+ }
+ ctx.putImageData(im,0,0);
+}
+$("removeBg").onclick=async()=>{
+ if(!allowed())return;
+ const hex=$("bg").value,rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
+ const tolerance=Number($("tolerance").value),edge=$("edgeOnly").checked;
+ const targets=$("batch").checked?[...frames]:[current()];
+ await job(async()=>{
+  changed();
+  for(let i=0;i<targets.length;i++){
+   check();message("去背 "+(i+1)+"/"+targets.length);await sleep();check();
+   const c=copyCanvas(img(targets[i].asset));
+   removeBackground(c,rgb,tolerance,edge);editFrame(targets[i],c);collectAssets();
+   $("progress").value=(i+1)/targets.length*100;
+  }
+  message("去背完成。誤刪時可復原，並降低容差。");
+ });
+};
+$("undo").onclick=()=>{
+ if(!allowed())return;const f=current();
+ if(!f.undo)return message("目前影格沒有可復原步驟。");
+ f.asset=f.undo;f.undo=null;changed();collectAssets();refresh();
+};
+$("resetFrame").onclick=()=>{
+ if(!allowed())return;const f=current();
+ if(f.asset===f.original)return;
+ f.undo=f.asset;f.asset=f.original;changed();collectAssets();refresh();
+};
+
+/* 預覽設定與輸出 */
+for(const id of ["fx","fxColor","power","fxFrames","playOrder","scale","pixel","outputBg","outputColor","alpha"])$(id).oninput=()=>{
+ if(busy||gesture)return;
+ if(["fx","fxFrames","playOrder"].includes(id)){position=0;playElapsed=0;}
+ changed();
+};
+$("resolution").onchange=()=>{
+ if(busy||gesture||$("resolution").value==="custom")return;
+ const value=$("resolution").value,[w,h]=value.split("x").map(Number);
+ setSize(w,h);$("resolution").value=value;changed();
+};
+for(const id of ["width","height"])$(id).onchange=()=>{
+ if(busy||gesture)return;const s=size();setSize(s.w,s.h);changed();
+};
+$("useSize").onclick=()=>{
+ if(!allowed())return;const c=img(current().asset);setSize(c.width,c.height);changed();
+};
+$("play").onclick=()=>{
+ if(!allowed())return;playing=!playing;playElapsed=0;$("play").textContent=playing?"暫停":"播放";
+};
+function stepFrame(step){
+ if(!allowed())return;
+ pause();const seq=sequence();position=(position+step+seq.length)%seq.length;
+ selected=frames.length===1?0:previewIndex();playElapsed=0;refresh();
+}
+$("prev").onclick=()=>stepFrame(-1);
+$("next").onclick=()=>stepFrame(1);
+function atlasDimensions(w,h,count,cols){
+ cols=Math.min(count,cols);const rows=Math.ceil(count/cols);
+ if(w*cols>16384||h*rows>16384||w*h*cols*rows>32000000)
+  throw Error("圖集超過單邊 16384／3200 萬像素，請縮小每格尺寸或調整每列格數。");
+ return {cols,rows};
+}
+async function loadEncoder(){
+ if(encoder)return encoder;
+ let timer;
+ try{
+  const mod=await Promise.race([
+   import("https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm"),
+   new Promise((_,reject)=>timer=setTimeout(()=>reject(Error("GIF 套件載入逾時，請確認網路與 CDN 存取。")),25000))
+  ]);
+  if(!mod.GIFEncoder||!mod.quantize||!mod.applyPalette)throw Error("GIF 套件載入失敗。");
+  encoder=mod;return mod;
+ }catch(e){
+  throw Error("無法載入 GIF 編碼套件。請確認可連線 jsDelivr，重新按生成 GIF。\n"+e.message);
+ }finally{clearTimeout(timer);}
+}
+function sampleColors(rgba,threshold){
+ let count=0;
+ for(let p=3;p<rgba.length;p+=4)if(rgba[p]>=threshold)count++;
+ if(!count)return null;
+ const take=Math.min(count,100000),out=new Uint8Array(take*4);
+ let seen=0,k=0;
+ for(let p=0;p<rgba.length&&k<take;p+=4){
+  if(rgba[p+3]<threshold)continue;
+  if(seen>=Math.floor(k*count/take)){
+   const q=k*4;out[q]=rgba[p];out[q+1]=rgba[p+1];out[q+2]=rgba[p+2];out[q+3]=255;k++;
+  }
+  seen++;
+ }
+ return out;
+}
+$("exportGif").onclick=async()=>{
+ if(!allowed())return;
+ const {w,h}=size(),seq=sequence(),o=options(),total=baseCount();
+ const threshold=Number($("alpha").value);
+ if(w*h*seq.length>80000000&&!confirm("高解析度、多影格 GIF 會耗用大量記憶體，建議先用小尺寸。仍要繼續？"))return;
+ await job(async()=>{
+  revoke("gif");message("載入 GIF 編碼套件…");
+  const {GIFEncoder,quantize,applyPalette}=await loadEncoder();check();
+  if(document.fonts)await document.fonts.ready;
+  const gif=GIFEncoder(),c=canvas(w,h),ctx=c.getContext("2d");
+  try{
+   for(let i=0;i<seq.length;i++){
+    message("GIF 編碼 "+(i+1)+"/"+seq.length);await sleep();check();
+    render(ctx,w,h,seq[i],total,o);
+    const rgba=ctx.getImageData(0,0,w,h).data,sample=sampleColors(rgba,threshold);
+    let palette,indexed;
+    if(!sample){palette=[[0,0,0],[0,0,0]];indexed=new Uint8Array(w*h);}
+    else{
+     const colors=quantize(sample,255);
+     await sleep();check();indexed=applyPalette(rgba,colors);
+     for(let p=0;p<indexed.length;p++)indexed[p]=rgba[p*4+3]<threshold?0:indexed[p]+1;
+     palette=[[0,0,0],...colors];
+    }
+    await sleep();check();
+    gif.writeFrame(indexed,w,h,{
+     palette,transparent:true,transparentIndex:0,
+     delay:source(seq[i]).ms,dispose:2,repeat:0
+    });
+    $("progress").value=(i+1)/seq.length*100;
+   }
+   check();gif.finish();
+   const blob=new Blob([gif.bytes()],{type:"image/gif"});
+   publish("gif",blob,"動畫_"+seq.length+"格_"+w+"x"+h+".gif");
+   message("GIF 完成，請按下載。約 "+(blob.size/1048576).toFixed(2)+" MB。");
+  }finally{c.width=c.height=1;}
+ });
+};
+$("exportPng").onclick=async()=>{
+ if(!allowed())return;
+ const {w,h}=size(),index=previewIndex(),o=options(),total=baseCount();
+ await job(async()=>{
+  revoke("png");const c=canvas(w,h);
+  try{
+   render(c.getContext("2d"),w,h,index,total,o);
+   const blob=await png(c);check();
+   publish("png",blob,"動畫單幀_"+w+"x"+h+".png");message("PNG 完成，請按下載。");
+  }finally{c.width=c.height=1;}
+ });
+};
+$("exportAtlas").onclick=async()=>{
+ if(!allowed())return;
+ const {w,h}=size(),seq=sequence(),o=options(),total=baseCount();
+ await job(async()=>{
+  revoke("atlas");
+  const {cols,rows}=atlasDimensions(w,h,seq.length,integer("atlasCols",1,32,4));
+  const out=canvas(w*cols,h*rows),cell=canvas(w,h);
+  try{
+   const ctx=out.getContext("2d"),cc=cell.getContext("2d");
+   for(let i=0;i<seq.length;i++){
+    check();render(cc,w,h,seq[i],total,o);
+    ctx.drawImage(cell,(i%cols)*w,Math.floor(i/cols)*h);
+    $("progress").value=(i+1)/seq.length*100;
+    if(i%4===0)await sleep();
+   }
+   const blob=await png(out);check();
+   publish("atlas",blob,"動畫圖集_"+seq.length+"格_每列"+cols+"_每格"+w+"x"+h+".png");
+   message("動畫圖集完成。這是靜態 PNG，每列 "+cols+" 格。");
+  }finally{out.width=out.height=cell.width=cell.height=1;}
+ });
+};
+$("exportVideo").onclick=async()=>{
+ if(!allowed())return;
+ if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)
+  return message("瀏覽器不支援錄製，請使用電腦版 Chrome／Edge。");
+ const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+ if(!mime)return message("此瀏覽器不支援 WebM 錄製。");
+ const {w,h}=size(),seq=sequence(),o={...options(),bg:"solid"},total=baseCount();
+ const times=seq.map(i=>source(i).ms),duration=times.reduce((a,b)=>a+b,0);
+ if(!confirm("即時錄製約 "+(duration/1000).toFixed(1)+" 秒。請保持本頁前景，繼續？"))return;
+ await job(async()=>{
+  revoke("webm");const c=canvas(w,h),ctx=c.getContext("2d");
+  let stream,rec,error=null,stopTimer;
+  const chunks=[];
+  try{
+   render(ctx,w,h,seq[0],total,o);
+   stream=c.captureStream(Math.min(60,1000/Math.min(...times)));
+   rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:Math.round(clamp(w*h*6,2000000,25000000))});
+   const stopped=new Promise(resolve=>rec.addEventListener("stop",resolve,{once:true}));
+   rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+   rec.onerror=e=>{error=e.error||Error("影片錄製失敗。");};
+   rec.start(1000);
+   const begin=performance.now();
+   let index=0,boundary=times[0],last=-1,wasHidden=false;
+   try{
+    while(true){
+     check();if(error)throw error;
+     if(rec.state==="inactive")throw Error("錄製意外中止。");
+     const elapsed=performance.now()-begin;
+     if(elapsed>=duration)break;
+     if(document.hidden)wasHidden=true;
+     while(index<seq.length-1&&elapsed>=boundary){index++;boundary+=times[index];}
+     if(last!==index){render(ctx,w,h,seq[index],total,o);last=index;}
+     $("progress").value=elapsed/duration*100;
+     message("錄製 "+(elapsed/1000).toFixed(1)+"／"+(duration/1000).toFixed(1)+" 秒");
+     await sleep(10);
+    }
+   }finally{
+    if(rec.state!=="inactive")rec.stop();
+    await Promise.race([
+     stopped,
+     new Promise((_,reject)=>stopTimer=setTimeout(()=>reject(Error("影片封裝逾時。")),15000))
+    ]);
+    clearTimeout(stopTimer);
+   }
+   check();if(error)throw error;
+   const blob=new Blob(chunks,{type:rec.mimeType||"video/webm"});
+   if(!blob.size)throw Error("未取得影片資料。");
+   publish("webm",blob,"無聲動畫_"+w+"x"+h+".webm");
+   $("progress").value=100;
+   message("WebM 完成，請按下載。"+(wasHidden?"錄製期間曾切至背景，可能掉格，建議重錄。":""));
+  }finally{
+   clearTimeout(stopTimer);
+   if(rec&&rec.state!=="inactive")rec.stop();
+   if(stream)stream.getTracks().forEach(t=>t.stop());
+   c.width=c.height=1;
+  }
+ });
+};
+
+/* 四向角色 */
+function actorSize(){
+ return {w:integer("actorWidth",16,1024,256),h:integer("actorHeight",16,1024,256)};
+}
+function drawActorCell(ctx,id,w,h,c){
+ ctx.clearRect(0,0,w,h);if(!id)return;
+ const src=img(id);
+ const rect=$("actorTrim").checked?bounds(id):{x:0,y:0,w:src.width,h:src.height};
+ if(!rect)return;
+ const scale=Math.min(w/rect.w,h/rect.h)*c.scale/100,dw=rect.w*scale,dh=rect.h*scale;
+ const x=(w-dw)/2+w*c.x/100;
+ const y=($("actorAlign").value==="bottom"?h*.95-dh:(h-dh)/2)+h*c.y/100;
+ ctx.imageSmoothingEnabled=!$("actorPixel").checked;
+ ctx.drawImage(src,rect.x,rect.y,rect.w,rect.h,x,y,dw,dh);
+}
+function refreshActor(){
+ const c=clip();
+ actorSelected=Math.min(actorSelected,c.items.length-1);
+ if(actorSelected<0&&c.items.length)actorSelected=0;
+ $("actorFrames").replaceChildren();
+ c.items.forEach((id,i)=>$("actorFrames").append(thumb(id,String(i+1),i===actorSelected,()=>{
+  if(busy||gesture)return;actorSelected=i;refreshActor();
+ })));
+ $("actorDelay").value=c.ms;$("actorScale").value=c.scale;$("actorX").value=c.x;$("actorY").value=c.y;
+ $("actorInfo").textContent=dirName[$("actorDir").value]+"／"+actionName[$("actorAction").value]+"｜"+c.items.length+" 格";
+ const {w,h}=actorSize(),scale=Math.min(1,260/Math.max(w,h));
+ for(const d of dirs){
+  const can=$("cardCanvas_"+d);
+  can.width=Math.max(1,Math.round(w*scale));can.height=Math.max(1,Math.round(h*scale));
+  const idle=actor[d].idle;
+  drawActorCell(can.getContext("2d"),idle.items[0],can.width,can.height,idle);
+  $("cardInfo_"+d).textContent="待機 "+idle.items.length+"｜走路 "+actor[d].walk.items.length+"｜奔跑 "+actor[d].run.items.length;
+ }
+}
+for(const d of dirs){
+ const card=document.createElement("div");card.className="card";
+ const title=document.createElement("strong");title.textContent=dirName[d];
+ const c=document.createElement("canvas");c.id="cardCanvas_"+d;c.className="checker";
+ const info=document.createElement("div");info.id="cardInfo_"+d;info.className="note";
+ const button=document.createElement("button");button.textContent="設定此方向";
+ button.onclick=()=>{
+  if(busy||gesture)return;
+  $("actorDir").value=d;$("actorAction").value="idle";
+  actorMode="preview";actorElapsed=0;actorKey="";clearKeys();changed();refreshActor();
+ };
+ card.append(title,c,info,button);$("fourCards").append(card);
+}
+function actorChanged(){actorElapsed=0;actorKey="";changed();refreshActor();}
+for(const id of ["actorDir","actorAction"])$(id).onchange=()=>{
+ if(busy||gesture)return;
+ actorSelected=0;actorMode="preview";clearKeys();actorChanged();
+};
+$("actorAdd").onclick=()=>{if(!busy&&!gesture)$("actorFiles").click();};
+$("actorFiles").onchange=async e=>{
+ const files=sortedFiles(e.target.files);e.target.value="";
+ if(!files.length)return;
+ await job(async()=>{
+  checkItems(files.length);const out=[];
+  for(let i=0;i<files.length;i++){
+   check();message("載入角色素材 "+(i+1)+"/"+files.length);
+   const c=await fileCanvas(files[i]);check();out.push(addAsset(c,files[i].name));
+   $("progress").value=(i+1)/files.length*100;await sleep();
+  }
+  check();clip().items.push(...out);actorSelected=0;actorChanged();message("已加入目前角色動作。");
+ });
+};
+$("actorCurrent").onclick=()=>{
+ if(!allowed())return;
+ try{
+  checkItems(1);clip().items.push(current().asset);
+  actorSelected=clip().items.length-1;actorChanged();
+  message("已加入目前影格，不包含疊加圖層與特效。");
+ }catch(e){message(e.message);}
+};
+$("actorAll").onclick=()=>{
+ if(!allowed()||!confirm("將全部 "+frames.length+" 格加入目前方向與動作？"))return;
+ try{
+  checkItems(frames.length);clip().items.push(...frames.map(f=>f.asset));
+  actorSelected=0;actorChanged();message("已加入全部動畫影格，不包含疊加圖層與特效。");
+ }catch(e){message(e.message);}
+};
+function moveActor(step){
+ if(busy||gesture)return;
+ const items=clip().items,j=actorSelected+step;
+ if(actorSelected<0||j<0||j>=items.length)return;
+ [items[actorSelected],items[j]]=[items[j],items[actorSelected]];
+ actorSelected=j;actorChanged();
+}
+$("actorLeft").onclick=()=>moveActor(-1);
+$("actorRight").onclick=()=>moveActor(1);
+$("actorCopy").onclick=()=>{
+ if(busy||gesture||actorSelected<0)return;
+ try{
+  checkItems(1);clip().items.splice(actorSelected+1,0,clip().items[actorSelected]);
+  actorSelected++;actorChanged();
+ }catch(e){message(e.message);}
+};
+$("actorDelete").onclick=()=>{
+ if(busy||gesture||actorSelected<0)return;
+ clip().items.splice(actorSelected,1);actorChanged();collectAssets();
+};
+$("actorClear").onclick=()=>{
+ if(busy||gesture||!confirm("清空目前方向的這組動作？"))return;
+ clip().items=[];actorSelected=-1;actorChanged();collectAssets();
+};
+$("actorDelay").onchange=()=>{
+ if(busy||gesture)return;
+ clip().ms=Math.min(5000,delay($("actorDelay").value));actorChanged();
+};
+for(const [id,key] of [["actorScale","scale"],["actorX","x"],["actorY","y"]])$(id).oninput=()=>{
+ if(busy||gesture)return;clip()[key]=Number($(id).value);actorChanged();
+};
+$("actorReset").onclick=()=>{
+ if(busy||gesture)return;Object.assign(clip(),{scale:90,x:0,y:0});actorChanged();
+};
+for(const id of ["actorWidth","actorHeight","actorAlign","actorTrim","actorPixel","actorDisplay","actorSpeed","runRate","actorCols","fourLayout"])$(id).onchange=()=>{
+ if(busy||gesture)return;
+ if(id==="actorWidth"||id==="actorHeight"){
+  const s=actorSize();$("actorWidth").value=s.w;$("actorHeight").value=s.h;
+ }
+ changed();refreshActor();
+};
+function resolveActor(d,action){
+ const group=actor[d];
+ if(group[action].items.length)return {clip:group[action],name:action,static:false};
+ const choices=action==="run"?["walk","idle"]:action==="walk"?["run","idle"]:["walk","run"];
+ for(const k of choices)if(group[k].items.length)
+  return {clip:group[k],name:k,static:action==="idle"||k==="idle"};
+ return {clip:null,name:action,static:true};
+}
+function movement(){
+ const list=[...keys.values(),...touchKeys.values()];
+ return list.length?list[list.length-1]:null;
+}
+function drawGame(dt){
+ const move=movement(),moving=actorMode==="control"&&!!move;
+ const running=shift||(touchKeys.size>0&&$("touchRun").checked);
+ if(moving&&!busy&&!gesture){
+  facing=move;
+  const speed=Number($("actorSpeed").value)*(running?num("runRate",1,4,1.8):1)*dt;
+  if(facing==="left")gx-=speed;if(facing==="right")gx+=speed;
+  if(facing==="up")gy-=speed;if(facing==="down")gy+=speed;
+ }
+ const d=actorMode==="preview"?$("actorDir").value:facing;
+ const a=actorMode==="preview"?$("actorAction").value:moving?(running?"run":"walk"):"idle";
+ const result=actorMode==="preview"?{clip:clip(),name:a,static:false}:resolveActor(d,a);
+ const key=d+"/"+a+"/"+result.name;
+ if(key!==actorKey){actorElapsed=0;actorKey=key;}
+ if(!busy&&!gesture)actorElapsed+=dt*1000;
+ gc.fillStyle="#152236";gc.fillRect(0,0,800,420);
+ gc.strokeStyle="#25364e";gc.lineWidth=1;gc.beginPath();
+ for(let x=0;x<=800;x+=40){gc.moveTo(x,0);gc.lineTo(x,420);}
+ for(let y=0;y<=420;y+=40){gc.moveTo(0,y);gc.lineTo(800,y);}
+ gc.stroke();
+ const {w,h}=actorSize(),scale=Number($("actorDisplay").value)/Math.max(w,h),dw=w*scale,dh=h*scale;
+ gx=clamp(gx,dw/2,800-dw/2);gy=clamp(gy,dh/2,420-dh/2);
+ const x=actorMode==="preview"?400:gx,y=actorMode==="preview"?210:gy;
+ if(result.clip?.items.length){
+  const c=result.clip,index=result.static?0:Math.floor(actorElapsed/c.ms)%c.items.length;
+  const s=Math.min(1,440/Math.max(w,h)),cw=Math.max(1,Math.round(w*s)),ch=Math.max(1,Math.round(h*s));
+  if(actorCell.width!==cw||actorCell.height!==ch){actorCell.width=cw;actorCell.height=ch;}
+  drawActorCell(ac,c.items[index],cw,ch,c);
+  gc.imageSmoothingEnabled=!$("actorPixel").checked;
+  gc.drawImage(actorCell,x-dw/2,y-dh/2,dw,dh);
+ }else{
+  gc.strokeStyle="#ffbd66";gc.strokeRect(x-25,y-25,50,50);
+  gc.fillStyle="#ffbd66";gc.textAlign="center";gc.font="14px sans-serif";
+  gc.fillText("缺少此方向／動作圖片",x,y+50);
+ }
+ gc.fillStyle="#edf3fa";gc.textAlign="left";gc.font='16px "Microsoft JhengHei",sans-serif';
+ gc.fillText((actorMode==="preview"?"組別預覽":"角色操控")+"｜"+dirName[d]+"｜"+actionName[a],16,26);
+ gc.font='13px "Microsoft JhengHei",sans-serif';
+ gc.fillText("方向鍵／WASD：走路　Shift：奔跑　放開：待機",16,403);
+}
+function direction(key){
+ return {ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",
+ w:"up",s:"down",a:"left",d:"right"}[key.length===1?key.toLowerCase():key];
+}
+game.onkeydown=e=>{
+ if(busy||gesture)return;
+ if(e.key==="Shift"){e.preventDefault();shift=true;return;}
+ const d=direction(e.key);if(!d)return;e.preventDefault();
+ actorMode="control";
+ if(!e.repeat){keys.set(e.code||e.key,d);facing=d;}
+};
+game.onkeyup=e=>{
+ if(e.key==="Shift"){shift=false;return;}
+ if(direction(e.key)){e.preventDefault();keys.delete(e.code||e.key);}
+};
+game.onpointerdown=()=>{
+ if(busy||gesture)return;game.focus();actorMode="control";
+};
+game.onblur=clearKeys;
+window.addEventListener("blur",clearKeys);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)clearKeys();});
+$("actorPreview").onclick=()=>{clearKeys();actorMode="preview";actorElapsed=0;actorKey="";};
+$("actorControl").onclick=()=>{
+ actorMode="control";game.focus();message("方向鍵／WASD 走路，Shift 奔跑，放開回待機。");
+};
+$("actorHome").onclick=()=>{gx=400;gy=210;clearKeys();};
+document.querySelectorAll("[data-move]").forEach(button=>{
+ button.onpointerdown=e=>{
+  if(busy||gesture)return;
+  e.preventDefault();game.focus();button.setPointerCapture(e.pointerId);
+  actorMode="control";touchKeys.set(e.pointerId,button.dataset.move);facing=button.dataset.move;
+ };
+ for(const event of ["pointerup","pointercancel","lostpointercapture"])
+  button.addEventListener(event,e=>touchKeys.delete(e.pointerId));
+});
+$("exportFour").onclick=async()=>{
+ if(busy||gesture)return;
+ const missing=dirs.filter(d=>!actor[d].idle.items.length);
+ if(missing.length)return message("四向圖集需要四個方向待機第一格。尚缺："+missing.map(d=>dirName[d]).join("、"));
+ await job(async()=>{
+  revoke("four");
+  const {w,h}=actorSize(),cols=$("fourLayout").value==="row"?4:2;
+  const out=canvas(w*cols,h*(4/cols)),cell=canvas(w,h);
+  try{
+   const ctx=out.getContext("2d"),cc=cell.getContext("2d");
+   dirs.forEach((d,i)=>{
+    const c=actor[d].idle;drawActorCell(cc,c.items[0],w,h,c);
+    ctx.drawImage(cell,(i%cols)*w,Math.floor(i/cols)*h);
+   });
+   const blob=await png(out);check();
+   publish("four",blob,"角色四向_每列"+cols+"_每格"+w+"x"+h+".png");
+   message("四向圖集完成。順序：正面、背面、左側、右側。");
+  }finally{out.width=out.height=cell.width=cell.height=1;}
+ });
+};
+$("exportActor").onclick=async()=>{
+ if(busy||gesture)return;
+ const c=clip();if(!c.items.length)return message("目前角色動作沒有圖片。");
+ await job(async()=>{
+  revoke("actor");
+  const {w,h}=actorSize(),{cols,rows}=atlasDimensions(w,h,c.items.length,integer("actorCols",1,32,8));
+  const out=canvas(w*cols,h*rows),cell=canvas(w,h);
+  try{
+   const ctx=out.getContext("2d"),cc=cell.getContext("2d");
+   for(let i=0;i<c.items.length;i++){
+    check();drawActorCell(cc,c.items[i],w,h,c);
+    ctx.drawImage(cell,(i%cols)*w,Math.floor(i/cols)*h);
+    $("progress").value=(i+1)/c.items.length*100;
+    if(i%8===0)await sleep();
+   }
+   const blob=await png(out);check();
+   publish("actor",blob,"角色_"+dirName[$("actorDir").value]+"_"+actionName[$("actorAction").value]+"_每列"+cols+"_每格"+w+"x"+h+".png");
+   message("角色動作圖集完成。每格 "+w+" × "+h+"，每列 "+cols+" 格。");
+  }finally{out.width=out.height=cell.width=cell.height=1;}
+ });
+};
+$("actorToAnimation").onclick=async()=>{
+ if(busy||gesture)return;
+ const c=clip();if(!c.items.length)return message("目前角色動作沒有圖片。");
+ await job(async()=>{
+  checkItems(c.items.length);
+  const {w,h}=actorSize(),out=[];
+  for(let i=0;i<c.items.length;i++){
+   check();const can=canvas(w,h);
+   drawActorCell(can.getContext("2d"),c.items[i],w,h,c);
+   out.push(frame(addAsset(can,"角色動作 "+(i+1)),c.ms));
+   $("progress").value=(i+1)/c.items.length*100;await sleep();
+  }
+  check();const first=frames.length;frames.push(...out);selected=first;
+  if(!first)setSize(w,h);
+  align();changed();message("角色動作已追加到動畫區，可加入對白並生成 GIF。");
+ });
+};
+
+/* 專案存取：版本 2 */
+const settingIds=[
+ "defaultDelay","cols","rows","order","margin","gapX","gapY","skipEmpty",
+ "bg","tolerance","edgeOnly","brush","fx","fxColor","power","fxFrames","playOrder",
+ "width","height","scale","outputBg","outputColor","pixel","alpha","atlasCols",
+ "actorDir","actorAction","actorWidth","actorHeight","actorAlign","actorTrim","actorPixel",
+ "actorDisplay","actorSpeed","runRate","actorCols","fourLayout"
+];
+const initialSettings={};
+for(const id of settingIds){
+ const el=$(id);initialSettings[id]=el.type==="checkbox"?el.checked:el.value;
+}
+function readSettings(){
+ const out={};
+ for(const id of settingIds){const el=$(id);out[id]=el.type==="checkbox"?el.checked:el.value;}
+ return out;
+}
+function cleanSettings(raw){
+ raw=raw&&typeof raw==="object"?raw:{};
+ const out={...initialSettings};
+ for(const id of settingIds){
+  const el=$(id),value=raw[id];if(value===undefined)continue;
+  if(el.type==="checkbox"){out[id]=value===true;continue;}
+  if(el.tagName==="SELECT"){
+   if(Array.from(el.options).some(o=>o.value===String(value)))out[id]=String(value);
+  }else if(el.type==="color"){
+   if(/^#[0-9a-f]{6}$/i.test(String(value)))out[id]=String(value);
+  }else{
+   const v=Number(value);if(!Number.isFinite(v))continue;
+   out[id]=String(clamp(v,el.min===""?-100000:Number(el.min),el.max===""?100000:Number(el.max)));
+  }
+ }
+ return out;
+}
+function applySettings(raw){
+ for(const [id,value] of Object.entries(cleanSettings(raw))){
+  const el=$(id);if(el.type==="checkbox")el.checked=value;else el.value=value;
+ }
+ const s=size();setSize(s.w,s.h);
+}
+$("saveProject").onclick=async()=>{
+ await job(async()=>{
+  revoke("project");
+  const used=Array.from(references(false));
+  const data={format:"local-animation-studio",version:2,settings:readSettings(),
+   frames:frames.map(f=>({id:f.id,asset:f.asset,original:f.original,ms:f.ms})),
+   layers:layers.map(l=>({...l})),actor:JSON.parse(JSON.stringify(actor)),assets:[]};
+  let encodedSize=0;
+  for(let i=0;i<used.length;i++){
+   check();message("建立專案 "+(i+1)+"/"+used.length);
+   const id=used[i],a=assets.get(id),encoded=a.c.toDataURL("image/png");
+   encodedSize+=encoded.length;
+   if(encodedSize>150*1024*1024)throw Error("專案超過 150 MB，請減少素材再存檔。");
+   data.assets.push({id,name:a.name,png:encoded});
+   $("progress").value=(i+1)/Math.max(1,used.length)*100;await sleep();
+  }
+  check();const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+  if(blob.size>150*1024*1024)throw Error("專案超過 150 MB。");
+  publish("project",blob,"動畫與四向角色專案_v2.json");
+  $("progress").value=100;message("專案已建立，請再按「下載專案 JSON」。");
+ });
+};
+$("loadProject").onclick=()=>{if(!busy&&!gesture)$("projectFile").click();};
+$("projectFile").onchange=async e=>{
+ const file=e.target.files[0];e.target.value="";
+ if(!file||busy||gesture)return;
+ if(!confirm("讀取將取代目前動畫、圖層、角色素材與設定。已保存目前內容嗎？"))return;
+ await job(async()=>{
+  if(file.size>150*1024*1024)throw Error("專案超過 150 MB。");
+  let data;
+  try{data=JSON.parse(await file.text());}catch(e){throw Error("JSON 解析失敗，請選擇本工具下載的專案。");}
+  if(!data||data.format!=="local-animation-studio"||data.version!==2)
+   throw Error("本版只讀取 version 2 專案，不支援舊版 JSON。");
+  if(!Array.isArray(data.assets)||!Array.isArray(data.frames)||!Array.isArray(data.layers))
+   throw Error("專案結構不完整。");
+  if(data.assets.length>3600||data.frames.length>1200||data.layers.length>500)
+   throw Error("專案項目數超過限制。");
+  const nextAssets=new Map();let pixels=0;
+  for(let i=0;i<data.assets.length;i++){
+   check();const a=data.assets[i];
+   if(!a||!Number.isSafeInteger(a.id)||a.id<1||a.id>1000000000||nextAssets.has(a.id)||
+    typeof a.png!=="string"||!a.png.startsWith("data:image/png;base64,"))
+    throw Error("專案素材資料不合法。");
+   message("讀取專案素材 "+(i+1)+"/"+data.assets.length);
+   const c=await decode(a.png);pixels+=c.width*c.height;
+   if(pixels>MAX_PIXELS)throw Error("專案素材超過 1 億像素。");
+   nextAssets.set(a.id,{c,name:String(a.name||"素材").slice(0,300),bounds:undefined});
+   $("progress").value=(i+1)/Math.max(1,data.assets.length)*100;await sleep();
+  }
+  function ref(id){
+   if(!nextAssets.has(id))throw Error("專案引用了不存在的素材。");return id;
+  }
+  function bounded(value,a,b,f){
+   const v=Number(value);return clamp(Number.isFinite(v)?v:f,a,b);
+  }
+  function choose(value,list,f){return list.includes(value)?value:f;}
+  function color(value,f){return /^#[0-9a-f]{6}$/i.test(String(value))?String(value):f;}
+  const ids=new Set();
+  const nextFrames=data.frames.map(f=>{
+   if(!f||!Number.isSafeInteger(f.id)||f.id<1||f.id>1000000000||ids.has(f.id))
+    throw Error("影格 ID 不合法。");
+   ids.add(f.id);
+   return {id:f.id,asset:ref(f.asset),original:ref(f.original),undo:null,ms:delay(f.ms)};
+  });
+  const nextActor=makeActor();let total=nextFrames.length;
+  for(const d of dirs)for(const a of actions){
+   const c=data.actor?.[d]?.[a];
+   if(!c||!Array.isArray(c.items))throw Error("角色動作資料不完整。");
+   total+=c.items.length;if(total>MAX_ITEMS)throw Error("影格合計超過 1200。");
+   nextActor[d][a]={items:c.items.map(ref),ms:Math.min(5000,delay(c.ms)),
+    scale:bounded(c.scale,10,150,90),x:bounded(c.x,-50,50,0),y:bounded(c.y,-50,50,0)};
+  }
+  const nextLayers=data.layers.map((l,i)=>{
+   if(!l||typeof l!=="object")throw Error("圖層資料不合法。");
+   const type=choose(l.type,["image","bubble","subtitle","narration"],"subtitle");
+   return {id:i+1,type,asset:type==="image"?ref(l.asset):null,
+    scope:choose(l.scope,["all","frame","range"],"all"),frameId:ids.has(l.frameId)?l.frameId:null,
+    from:Math.round(bounded(l.from,1,1200,1)),to:Math.round(bounded(l.to,1,1200,1)),
+    speaker:String(l.speaker||"").slice(0,50),text:String(l.text||"").slice(0,3000),
+    x:bounded(l.x,0,100,50),y:bounded(l.y,0,100,80),width:bounded(l.width,5,100,80),
+    opacity:bounded(l.opacity,0,100,100),fontSize:bounded(l.fontSize,2,15,5),
+    font:choose(l.font,["sans","serif"],"sans"),bold:l.bold===true,
+    align:choose(l.align,["left","center","right"],"left"),
+    color:color(l.color,"#ffffff"),fill:color(l.fill,"#172033")};
+  });
+  const settings=cleanSettings(data.settings);
+  check();
+  assets=nextAssets;frames=nextFrames;layers=nextLayers;actor=nextActor;
+  assetUID=Math.max(0,...assets.keys());frameUID=Math.max(0,...frames.map(f=>f.id));layerUID=layers.length;
+  selected=frames.length?0:-1;activeLayer=layers[0]?.id||null;actorSelected=0;
+  position=0;playElapsed=0;pause();clearKeys();
+  actorMode="preview";actorElapsed=0;actorKey="";gx=400;gy=210;
+  applySettings(settings);clearVideo();invalidate();listLayers();unsaved=false;
+  message("專案已讀取。動畫 "+frames.length+" 格，角色與圖層設定已還原。");
+ });
+};
+
+/* 其他設定、教學與主迴圈 */
+for(const id of ["defaultDelay","skipEmpty","bg","tolerance","edgeOnly","brush","atlasCols"])$(id).addEventListener("change",()=>{
+ if(!busy&&!gesture)changed();
+});
+$("openHelp").onclick=()=>document.querySelectorAll("#help details").forEach(e=>e.open=true);
+$("closeHelp").onclick=()=>document.querySelectorAll("#help details").forEach(e=>e.open=false);
+
+/* 修正介面文字為繁體 */
+document.querySelector('label:has(#actorWidth)').firstChild.textContent="畫格寬";
+$("actorAlign").options[0].textContent="腳底對齊";
+
+let lastTime=0,lastGame=0;
+function loop(time){
+ const dt=lastTime?Math.min(.1,(time-lastTime)/1000):0;lastTime=time;
+ if(!busy&&!gesture&&playing&&frames.length&&!document.hidden){
+  const seq=sequence();playElapsed+=dt*1000;let redraw=false;
+  while(playElapsed>=source(seq[position%seq.length]).ms){
+   playElapsed-=source(seq[position%seq.length]).ms;
+   position=(position+1)%seq.length;redraw=true;
+  }
+  if(redraw)drawPreview();
+ }
+ if(!document.hidden&&time-lastGame>=30){
+  const actorDt=lastGame?Math.min(.1,(time-lastGame)/1000):0;
+  lastGame=time;
+  if(!busy&&!gesture)drawGame(actorDt);
+ }
+ requestAnimationFrame(loop);
+}
+listLayers();refresh();refreshActor();drawGame(0);requestAnimationFrame(loop);
+</script>
+</body>
+</html>
