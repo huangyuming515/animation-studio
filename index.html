@@ -1,4 +1,3 @@
-html
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -2769,5 +2768,1297 @@ apply();
 })();
 </script>
 <!-- STUDIO_EIGHT_LANGUAGES_END -->
+
+
+<!-- STUDIO_MULTIFORMAT_3D_START -->
+<script>
+(function installMultiFormat3D(){
+"use strict";
+if(window.__studioMultiFormat3D)return;
+window.__studioMultiFormat3D=true;
+
+const css=document.createElement("style");
+css.textContent=`
+#studioGLB{margin:20px 0;padding:18px;border:1px solid #526b8c;border-radius:12px;background:#162233;color:#edf3fa;font:14px/1.7 system-ui,"Microsoft JhengHei",sans-serif}
+#studioGLB *{box-sizing:border-box}
+#studioGLB h2{font-size:23px;margin:0 0 10px}
+#studioGLB h3{font-size:17px;margin:16px 0 8px}
+#studioGLB .m-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:10px 0}
+#studioGLB label{display:inline-flex;gap:5px;align-items:center}
+#studioGLB input,#studioGLB select,#studioGLB button{font:inherit;color:#edf3fa;background:#22344c;border:1px solid #59708f;border-radius:5px;padding:6px}
+#studioGLB input[type=number]{width:90px}
+#studioGLB input[type=range]{width:160px;padding:0}
+#studioGLB input[type=color]{width:42px;padding:2px}
+#studioGLB button{cursor:pointer}
+#studioGLB :disabled{opacity:.45;cursor:default}
+#studioGLB .m-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+#studioGLB .m-view{min-width:0;border:1px solid #516582;border-radius:6px;overflow:hidden;background-color:#e2e5ea;background-image:linear-gradient(45deg,#bac2ce 25%,transparent 25%),linear-gradient(-45deg,#bac2ce 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#bac2ce 75%),linear-gradient(-45deg,transparent 75%,#bac2ce 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+#studioGLB .m-view canvas{display:block;width:100%;height:auto;touch-action:none}
+#studioGLB #m-crop{cursor:crosshair}
+#studioGLB .m-note{color:#bdcce0;font-size:13px}
+#studioGLB #m-status{white-space:pre-wrap;overflow-wrap:anywhere;color:#a9d5ff}
+#studioGLB #m-result a{display:inline-block;margin:4px;padding:8px 14px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none}
+#studioGLB #m-objects{max-height:290px;overflow:auto;border:1px solid #455b78;border-radius:6px;padding:8px}
+#studioGLB .m-object{display:flex;gap:8px;align-items:center;padding:5px;border-bottom:1px solid #33485f}
+#studioGLB .m-object button{flex:1;text-align:left;overflow-wrap:anywhere}
+#studioGLB .m-object.chosen{background:#294363}
+#studioGLB #m-models,#studioGLB #m-animation{max-width:100%}
+#studioGLB details{margin-top:14px;padding:12px;border:1px solid #455b78;border-radius:7px}
+#studioGLB progress{width:100%}
+@media(max-width:800px){#studioGLB .m-grid{grid-template-columns:1fr}}
+`;
+document.head.append(css);
+
+const root=document.createElement("section");
+root.id="studioGLB";
+root.dataset.studioLanguageOwned="1";
+root.innerHTML=`
+<h2>多格式 3D 模型與動畫工作區</h2>
+<p class="m-note">GLB／glTF・FBX・OBJ＋MTL・STL・PLY。剪裁只裁輸出畫面；不切割模型網格、不修正骨架權重。</p>
+
+<div class="m-row">
+<button id="m-init">啟用 3D 功能</button>
+<button id="m-files-button">選取模型與相關檔案</button>
+<button id="m-folder-button">選取素材資料夾</button>
+<input id="m-files" type="file" multiple hidden>
+<input id="m-folder" type="file" multiple webkitdirectory hidden>
+</div>
+<div class="m-row">
+<label>主模型 <select id="m-models"><option value="">尚未選取</option></select></label>
+<button id="m-load">載入選定模型</button>
+<button id="m-unload">卸載模型</button>
+</div>
+<p id="m-file-info" class="m-note">可先選檔，再啟用 3D。選取整個資料夾較能保留貼圖的相對路徑。</p>
+
+<div class="m-row">
+<label>画布寬 <input id="m-width" type="number" min="64" max="2048" value="768"></label>
+<label>高 <input id="m-height" type="number" min="64" max="2048" value="768"></label>
+<button id="m-size">套用尺寸</button>
+<button id="m-home">重新框住模型</button>
+<label><input id="m-alpha" type="checkbox" checked>透明背景</label>
+<input id="m-bg" type="color" value="#24344b" aria-label="背景顏色">
+<label>亮度 <input id="m-light" type="range" min=".2" max="3" step=".1" value="1"></label>
+</div>
+<div class="m-row">
+<label>投影 <select id="m-projection"><option value="perspective">透視</option><option value="orthographic">正交</option></select></label>
+<label><input id="m-wire" type="checkbox">線框檢查</label>
+</div>
+
+<div class="m-grid">
+<div>
+<h3>模型視角</h3>
+<div class="m-view" id="m-stage"></div>
+<p class="m-note">左鍵旋轉、滾輪縮放、右鍵平移；觸控可单指旋轉、雙指縮放。</p>
+</div>
+<div>
+<h3>輸出剪裁</h3>
+<div class="m-view"><canvas id="m-crop" width="768" height="768"></canvas></div>
+<p id="m-crop-info" class="m-note"></p>
+</div>
+</div>
+
+<div class="m-row">
+<button id="m-clear-crop">完整畫面</button>
+<label>X <input id="m-x" type="number" min="0" value="0"></label>
+<label>Y <input id="m-y" type="number" min="0" value="0"></label>
+<label>寬 <input id="m-cw" type="number" min="1" value="768"></label>
+<label>高 <input id="m-ch" type="number" min="1" value="768"></label>
+<button id="m-set-crop">套用剪裁</button>
+</div>
+
+<h3>物件管理與重疊檢查</h3>
+<div class="m-row">
+<button id="m-whole">選取整個模型</button>
+<button id="m-isolate">只顯示選取物件</button>
+<button id="m-restore-isolate">還原隔離前顯示</button>
+<button id="m-show-all">顯示全部</button>
+</div>
+<div id="m-objects">尚未載入模型。</div>
+<p id="m-selected-info" class="m-note"></p>
+<div class="m-row">
+<label>位置 X <input id="m-px" type="number" step=".01" value="0"></label>
+<label>Y <input id="m-py" type="number" step=".01" value="0"></label>
+<label>Z <input id="m-pz" type="number" step=".01" value="0"></label>
+</div>
+<div class="m-row">
+<label>旋轉 X° <input id="m-rx" type="number" step="1" value="0"></label>
+<label>Y° <input id="m-ry" type="number" step="1" value="0"></label>
+<label>Z° <input id="m-rz" type="number" step="1" value="0"></label>
+</div>
+<div class="m-row">
+<label>縮放 X <input id="m-sx" type="number" min=".001" max="1000" step=".01" value="1"></label>
+<label>Y <input id="m-sy" type="number" min=".001" max="1000" step=".01" value="1"></label>
+<label>Z <input id="m-sz" type="number" min=".001" max="1000" step=".01" value="1"></label>
+<button id="m-transform">套用位置／旋轉／縮放</button>
+<button id="m-reset-transform">重設選取物件</button>
+</div>
+<div class="m-row">
+<button id="m-depth">切換選取表面的深度微偏移</button>
+</div>
+<p class="m-note">獨立身體部位才可局部隱藏；若身體是一整個物件，隱藏後頭／手也可能消失。骨架網格不提供局部位移，避免破壞變形；可選「整個模型」調整整體。深度微偏移只適合近乎共面的閃爍，不會修復真正穿模。</p>
+
+<h3>動畫與取樣</h3>
+<div class="m-row">
+<label>動畫 <select id="m-animation"><option value="-1">原始姿勢</option></select></label>
+<button id="m-play">播放</button>
+<label>時間 <input id="m-time" type="range" min="0" max="1" step=".001" value="0"></label>
+<span id="m-time-label">0.000 秒</span>
+</div>
+<div class="m-row">
+<label>開始秒 <input id="m-start" type="number" min="0" step=".001" value="0"></label>
+<label>結束秒 <input id="m-end" type="number" min="0" step=".001" value="1"></label>
+<label>FPS <select id="m-fps"><option>5</option><option selected>10</option><option>12</option><option>15</option><option>20</option><option>24</option><option>30</option></select></label>
+<label>圖集每列 <input id="m-cols" type="number" min="1" max="32" value="4"></label>
+</div>
+
+<h3>輸出</h3>
+<div class="m-row">
+<button id="m-png">目前畫面 PNG</button>
+<button id="m-sheet">動畫 PNG 圖集</button>
+<button id="m-zip">逐格 PNG ZIP</button>
+<button id="m-four">四向 PNG 圖集</button>
+<button id="m-cancel">取消目前 3D 工作</button>
+</div>
+<progress id="m-progress" max="100" value="0"></progress>
+<div id="m-result"></div>
+<p id="m-status" role="status">先啟用 3D 功能，再選取模型及相關檔案。</p>
+
+<details open>
+<summary>格式與匯入方式</summary>
+<ul>
+<li><strong>GLB：</strong>通常可單檔載入；若仍有外部資源，也要一起提供。</li>
+<li><strong>glTF：</strong>選取 .gltf、.bin、貼圖，或選取整個資料夾。</li>
+<li><strong>FBX：</strong>支援載入器可解析的二進位／ASCII FBX；外部貼圖須一起提供。過舊版本、特殊材質或不支援的貼圖仍可能需要轉檔。</li>
+<li><strong>OBJ：</strong>選取 .obj、對應 .mtl 與貼圖；沒有 MTL 時使用預設材質。若 OBJ 指定 MTL 但未提供，會顯示缺檔錯誤。</li>
+<li><strong>STL：</strong>主要載入幾何，不含骨架動畫及一般材質貼圖。</li>
+<li><strong>PLY：</strong>可顯示三角網格或頂點點雲；有頂點色時保留。非三角面如何轉換取決於載入器。</li>
+</ul>
+<p>GLB／glTF 配置 Draco、Meshopt、KTX2 解碼器；遇到實際使用的壓縮格式時可能另下載解碼資源，不代表支援所有 glTF 擴充。</p>
+<p>模型要求的網路網址不會直接下載；貼圖及外部資料只從您選取的本機檔案或內嵌資料取得。多個同名檔案無法唯一對應時，請改選整個資料夾。</p>
+</details>
+
+<details>
+<summary>穿模、物件與動畫限制</summary>
+<ol>
+<li>先從物件清單選取衣服或身體，利用線框及單獨顯示檢查。</li>
+<li>若被衣服完整遮住的身體部位是獨立物件，可取消勾選暫時避開穿模。</li>
+<li>靜態獨立物件可調整位置、旋轉與縮放；輸入值為物件本地座標。</li>
+<li>骨架網格只提供顯示／隱藏與材質檢查，不提供權重編輯；播放動畫時也鎖定個別物件變換。</li>
+<li>切換動畫會由動畫混合器重新套用綁定屬性，因此之前的局部靜態調整可能被還原。</li>
+<li>顯示／隱藏與線框會反映在 PNG 輸出；输出前請關閉不需要的線框。</li>
+</ol>
+<p>沒有內建動畫就只能輸出靜態姿勢。本工具不會把多個 FBX 自動合併成動作，也不進行动作轉移、骨架重綁或 AI 補幀。</p>
+</details>
+
+<details>
+<summary>剪裁、四向、輸出與保存</summary>
+<ol>
+<li>先調整左側視角，再在右側拖曳框選；裁切的是渲染畫面，不是網格。</li>
+<li>目前 PNG 使用目前時間；動畫圖集及 ZIP 使用開始／結束秒數與 FPS。</li>
+<li>取樣包含開始、不包含結束；全部影格共用裁切框，請留足動作範圍。</li>
+<li>四向只拍目前姿勢；以目前水平視角為正面。排列為左上正面、右上背面、左下左側、右下右側。</li>
+<li>ZIP 內含逐格 PNG 與資訊 JSON；解壓後可將 PNG 匯入原 2D 區生成 GIF。</li>
+<li>資訊 JSON 不是原動畫工具的專案 JSON，不能用原「讀取專案」開啟。</li>
+<li>3D 模型、物件調整、相機及裁切不納入原專案存檔；關閉前請保留原始素材並下載輸出。</li>
+</ol>
+<p>單一主模型最多 100 MB；選取檔案合計最多 200 MB、1500 個檔案。輸出最多 300 格、取樣總計 8000 萬像素；圖集單邊最多 16384、總計 3200 萬像素；ZIP 的 PNG 總量最多 150 MB。這些上限不保證所有裝置都有足夠記憶體。</p>
+<p>取消是分步檢查；模型解析、解碼器或 ZIP 封裝中的同步步驟可能需要等候完成。3D 函式庫需連網，素材不會由本程式上傳。</p>
+</details>
+`;
+(document.querySelector("main")||document.body).append(root);
+root.querySelector('label:has(#m-width)').firstChild.textContent="畫布寬 ";
+root.querySelectorAll(".m-note").forEach(p=>{
+ p.textContent=p.textContent.replace("单指","單指");
+});
+
+const nav=document.querySelector("main nav");
+if(nav&&!nav.querySelector('a[href="#studioGLB"]')){
+ const a=document.createElement("a");
+ a.href="#studioGLB";a.textContent="多格式 3D";
+ a.dataset.studioLanguageOwned="1";nav.append(a);
+}
+
+const E=id=>root.querySelector("#"+id);
+const say=text=>{E("m-status").textContent=text;};
+const wait=(ms=0)=>new Promise(r=>setTimeout(r,ms));
+const bound=(v,a,b)=>Math.max(a,Math.min(b,v));
+const number=(id,a,b,f)=>{
+ const raw=E(id).value,n=raw.trim()===""?f:Number(raw);
+ return bound(Number.isFinite(n)?n:f,a,b);
+};
+const SIZE_LIMIT=200*1024*1024;
+const base="https://esm.sh/three@0.169.0";
+const addons=path=>import(base+"/examples/jsm/"+path);
+const S={
+ ready:false,working:false,cancel:false,lost:false,
+ renderer:null,scene:null,camera:null,controls:null,
+ pack:null,mixer:null,clips:[],action:null,duration:0,time:0,playing:false,
+ W:768,H:768,crop:{x:0,y:0,w:768,h:768},
+ files:new Map(),modelPaths:[],selected:null,isolation:null,
+ output:null,last:0,lastPreview:0,loopStarted:false,drag:null
+};
+let T,Orbit;
+const cropCanvas=E("m-crop"),cropContext=cropCanvas.getContext("2d");
+const transformIds=["m-px","m-py","m-pz","m-rx","m-ry","m-rz","m-sx","m-sy","m-sz"];
+const inputState=new Map();
+let selectedObjectRows=[];
+
+function hostBusy(){
+ return typeof busy!=="undefined"&&busy===true;
+}
+function clearResult(){
+ if(S.output)URL.revokeObjectURL(S.output);
+ S.output=null;E("m-result").replaceChildren();
+}
+function modified(){
+ if(!S.working)clearResult();
+}
+function showResult(blob,name){
+ clearResult();
+ S.output=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=S.output;a.download=name;a.textContent="下載 "+name;
+ E("m-result").append(a);
+}
+function pause3D(){
+ S.playing=false;E("m-play").textContent="播放";
+}
+function check(){
+ if(S.cancel)throw Error("已取消目前 3D 工作。");
+ if(S.lost)throw Error("WebGL 已中斷，請保存其他工作後重新開啟頁面。");
+}
+function isDrawable(o){
+ return !!(o&&(o.isMesh||o.isPoints||o.isLine));
+}
+function hasSkin(o){
+ let yes=false;
+ o?.traverse(n=>{if(n.isSkinnedMesh)yes=true;});
+ return yes;
+}
+function canTransform(){
+ if(!S.pack||!S.selected)return false;
+ if(S.selected===S.pack.wrapper)return true;
+ return !S.action&&!hasSkin(S.selected);
+}
+function sync(){
+ const blocked=S.working||hostBusy()||S.lost;
+ root.querySelectorAll("button,input,select").forEach(el=>el.disabled=blocked);
+ E("m-init").disabled=blocked||S.ready;
+ E("m-load").disabled=blocked||!S.ready||!S.modelPaths.length;
+ const needModel=[
+  "m-unload","m-home","m-whole","m-isolate","m-show-all","m-depth",
+  "m-png","m-sheet","m-zip","m-four","m-play","m-animation","m-time",
+  ...transformIds,"m-transform","m-reset-transform"
+ ];
+ needModel.forEach(id=>E(id).disabled=blocked||!S.pack);
+ E("m-size").disabled=blocked||!S.ready;
+ E("m-projection").disabled=blocked||!S.ready;
+ E("m-isolate").disabled=blocked||!isDrawable(S.selected);
+ E("m-depth").disabled=blocked||!S.selected?.isMesh;
+ E("m-restore-isolate").disabled=blocked||!S.isolation;
+ E("m-animation").disabled=blocked||!S.clips.length;
+ E("m-play").disabled=blocked||!S.action;
+ E("m-time").disabled=blocked||!S.action;
+ E("m-sheet").disabled=blocked||!S.action;
+ E("m-zip").disabled=blocked||!S.action;
+ [...transformIds,"m-transform","m-reset-transform"].forEach(id=>{
+  E(id).disabled=blocked||!canTransform();
+ });
+ E("m-cancel").disabled=!S.working;
+ if(S.controls)S.controls.enabled=!blocked;
+}
+
+/* 配合原工具的工作鎖，避免兩區同時修改或輸出。 */
+const originalHostLock=typeof window.lock==="function"?window.lock:null;
+if(originalHostLock){
+ window.lock=function(value){
+  originalHostLock(value);
+  sync();
+ };
+}
+const mainCancel=document.getElementById("cancel");
+mainCancel?.addEventListener("click",event=>{
+ if(!S.working)return;
+ event.preventDefault();event.stopImmediatePropagation();
+ S.cancel=true;say("取消中；會在目前可中斷步驟完成後停止。");
+},true);
+
+function acquire(){
+ S.working=true;S.cancel=false;
+ pause3D();E("m-progress").value=0;
+ if(originalHostLock)window.lock(true);
+ else{
+  document.querySelectorAll("button,input,select,textarea").forEach(el=>{
+   if(root.contains(el))return;
+   inputState.set(el,el.disabled);el.disabled=true;
+  });
+ }
+ sync();
+}
+function release(){
+ S.working=false;
+ if(originalHostLock)window.lock(false);
+ else{
+  for(const [el,disabled] of inputState)el.disabled=disabled;
+  inputState.clear();
+ }
+ sync();
+}
+async function task(fn,{restore=false}={}){
+ if(S.working||hostBusy())return;
+ if(S.drag)finishCrop(true);
+ let saved=null;
+ if(restore&&S.camera){
+  saved={
+   camera:S.camera,position:S.camera.position.clone(),
+   target:S.controls.target.clone(),up:S.camera.up.clone(),
+   zoom:S.camera.zoom,time:S.time
+  };
+ }
+ acquire();
+ try{
+  check();await fn();check();
+ }catch(error){
+  console.error(error);
+  say(error?.message||String(error));
+ }finally{
+  try{
+   if(saved&&S.camera===saved.camera){
+    S.camera.position.copy(saved.position);
+    S.camera.up.copy(saved.up);
+    S.camera.zoom=saved.zoom;
+    S.camera.updateProjectionMatrix();
+    S.controls.target.copy(saved.target);
+    S.controls.update();setTime(saved.time);
+   }
+   if(S.ready&&!S.lost){render3D();drawCrop();}
+  }finally{release();}
+ }
+}
+E("m-cancel").onclick=()=>{
+ S.cancel=true;say("取消中；模型解析或封裝步驟可能需要等待。");
+};
+
+function newCanvas(w,h){
+ const c=document.createElement("canvas");
+ c.width=w;c.height=h;
+ if(!c.getContext("2d"))throw Error("無法建立輸出畫布，請降低尺寸。");
+ return c;
+}
+function encodePNG(c){
+ return new Promise((resolve,reject)=>{
+  c.toBlob(b=>b?resolve(b):reject(Error("PNG 編碼失敗，請降低尺寸。")),"image/png");
+ });
+}
+function setTime(time){
+ S.time=bound(Number(time)||0,0,S.duration||0);
+ if(S.mixer&&S.action){
+  const sample=Math.min(S.time,Math.max(0,S.duration-0.000001));
+  S.mixer.setTime(sample);
+ }
+ E("m-time").value=S.time;
+ E("m-time-label").textContent=S.time.toFixed(3)+" 秒";
+}
+function render3D(){
+ if(!S.renderer||S.lost)return;
+ S.renderer.setClearColor(E("m-bg").value,E("m-alpha").checked?0:1);
+ const light=number("m-light",.2,3,1);
+ S.ambient.intensity=1.8*light;
+ S.key.intensity=2.5*light;
+ S.scene.updateMatrixWorld(true);
+ S.renderer.render(S.scene,S.camera);
+}
+function drawCrop(){
+ if(!S.renderer||S.lost)return;
+ const {W,H,crop:r}=S;
+ cropContext.clearRect(0,0,W,H);
+ cropContext.drawImage(S.renderer.domElement,0,0,W,H);
+ cropContext.fillStyle="rgba(0,0,0,.4)";
+ cropContext.fillRect(0,0,W,r.y);
+ cropContext.fillRect(0,r.y+r.h,W,H-r.y-r.h);
+ cropContext.fillRect(0,r.y,r.x,r.h);
+ cropContext.fillRect(r.x+r.w,r.y,W-r.x-r.w,r.h);
+ cropContext.strokeStyle="#20dcff";
+ cropContext.lineWidth=Math.max(2,W/350);
+ cropContext.strokeRect(r.x+.5,r.y+.5,Math.max(0,r.w-1),Math.max(0,r.h-1));
+}
+function tick(now){
+ requestAnimationFrame(tick);
+ const dt=S.last?Math.min(.1,(now-S.last)/1000):0;S.last=now;
+ if(!S.ready||S.working||hostBusy()||S.lost||document.hidden)return;
+ if(S.playing&&S.duration>0)setTime((S.time+dt)%S.duration);
+ S.controls.update();render3D();
+ if(now-S.lastPreview>65){drawCrop();S.lastPreview=now;}
+}
+
+function makeCamera(kind){
+ return kind==="orthographic"
+  ?new T.OrthographicCamera(-2,2,2,-2,.001,1000)
+  :new T.PerspectiveCamera(35,S.W/S.H,.001,1000);
+}
+function attachControls(){
+ S.controls?.dispose();
+ S.controls=new Orbit(S.camera,S.renderer.domElement);
+ S.controls.enableDamping=false;
+ S.controls.addEventListener("change",()=>{if(!S.working)modified();});
+}
+function syncProjectionAspect(){
+ const c=S.camera,aspect=S.W/S.H;
+ if(c.isPerspectiveCamera)c.aspect=aspect;
+ else{
+  const half=(c.top-c.bottom)/2||2;
+  c.left=-half*aspect;c.right=half*aspect;
+ }
+ c.updateProjectionMatrix();
+}
+function modelSphere(){
+ S.pack.wrapper.updateMatrixWorld(true);
+ const box=new T.Box3().setFromObject(S.pack.wrapper,true);
+ const sphere=box.getBoundingSphere(new T.Sphere());
+ if(box.isEmpty()||!Number.isFinite(sphere.radius)||sphere.radius<=0)
+  throw Error("模型沒有可用的幾何範圍，無法自動框選。");
+ return sphere;
+}
+function home(){
+ if(!S.pack)return;
+ const sphere=modelSphere(),r=sphere.radius,c=S.camera;
+ let distance;
+ if(c.isPerspectiveCamera){
+  const v=T.MathUtils.degToRad(c.fov);
+  const h=2*Math.atan(Math.tan(v/2)*c.aspect);
+  distance=r/Math.sin(Math.min(v,h)/2)*1.15;
+ }else{
+  const half=r*1.15/Math.min(1,S.W/S.H);
+  c.left=-half*S.W/S.H;c.right=half*S.W/S.H;
+  c.top=half;c.bottom=-half;distance=r*4;c.zoom=1;
+ }
+ c.near=Math.max(r/10000,1e-7);
+ c.far=Math.max(r*1000,distance*100);
+ c.position.copy(sphere.center).add(new T.Vector3(0,0,distance));
+ c.up.set(0,1,0);c.updateProjectionMatrix();
+ S.controls.target.copy(sphere.center);
+ S.controls.minDistance=r*.02;
+ S.controls.maxDistance=r*500;
+ S.controls.update();modified();
+}
+function applySize(){
+ S.W=Math.round(number("m-width",64,2048,768));
+ S.H=Math.round(number("m-height",64,2048,768));
+ E("m-width").value=S.W;E("m-height").value=S.H;
+ S.renderer.setSize(S.W,S.H);
+ cropCanvas.width=S.W;cropCanvas.height=S.H;
+ syncProjectionAspect();fullCrop();
+}
+E("m-init").onclick=()=>task(async()=>{
+ say("載入 3D 核心函式庫…");
+ let candidateRenderer=null;
+ try{
+  const modules=await Promise.all([
+   import(base),addons("controls/OrbitControls.js")
+  ]);
+  check();T=modules[0];Orbit=modules[1].OrbitControls;
+  candidateRenderer=new T.WebGLRenderer({
+   antialias:true,alpha:true,preserveDrawingBuffer:true
+  });
+  candidateRenderer.setPixelRatio(1);
+  candidateRenderer.outputColorSpace=T.SRGBColorSpace;
+  candidateRenderer.toneMapping=T.ACESFilmicToneMapping;
+  S.renderer=candidateRenderer;
+  S.scene=new T.Scene();
+  S.camera=makeCamera(E("m-projection").value);
+  S.camera.position.set(0,0,5);
+  S.ambient=new T.HemisphereLight(0xffffff,0x708099,1.8);
+  S.key=new T.DirectionalLight(0xffffff,2.5);
+  S.key.position.set(3,5,4);
+  S.scene.add(S.ambient,S.key);
+  attachControls();applySize();
+  E("m-stage").replaceChildren(S.renderer.domElement);
+  S.renderer.domElement.addEventListener("webglcontextlost",event=>{
+   event.preventDefault();S.lost=true;pause3D();sync();
+   say("WebGL 中斷，可能是顯示記憶體不足。請保存其他工作，重新開啟頁面並使用較小模型。");
+  });
+  S.ready=true;
+  E("m-init").textContent="3D 已啟用";
+  if(!S.loopStarted){S.loopStarted=true;requestAnimationFrame(tick);}
+  say("3D 已啟用。選取模型及相關檔案，再按「載入選定模型」。");
+ }catch(error){
+  candidateRenderer?.dispose();
+  S.controls?.dispose();
+  S.renderer=null;S.controls=null;S.ready=false;
+  E("m-stage").replaceChildren();
+  throw error;
+ }
+});
+
+function fullCrop(){
+ S.crop={x:0,y:0,w:S.W,h:S.H};syncCrop();modified();
+}
+function syncCrop(){
+ const r=S.crop;
+ E("m-x").value=r.x;E("m-y").value=r.y;
+ E("m-cw").value=r.w;E("m-ch").value=r.h;
+ E("m-crop-info").textContent=`輸出：X ${r.x}、Y ${r.y}、${r.w} × ${r.h} px`;
+}
+E("m-size").onclick=()=>{
+ try{applySize();if(S.pack)home();}
+ catch(error){say(error.message);}
+};
+E("m-home").onclick=()=>{try{home();}catch(error){say(error.message);}};
+E("m-projection").onchange=()=>{
+ if(!S.ready)return;
+ try{
+  S.camera=makeCamera(E("m-projection").value);
+  S.camera.position.set(0,0,5);
+  attachControls();syncProjectionAspect();
+  if(S.pack)home();
+  sync();modified();
+ }catch(error){say(error.message);}
+};
+E("m-clear-crop").onclick=fullCrop;
+E("m-set-crop").onclick=()=>{
+ const x=Math.round(number("m-x",0,S.W-1,0));
+ const y=Math.round(number("m-y",0,S.H-1,0));
+ S.crop={
+  x,y,w:Math.round(number("m-cw",1,S.W-x,S.W-x)),
+  h:Math.round(number("m-ch",1,S.H-y,S.H-y))
+ };
+ syncCrop();modified();
+};
+function cropPoint(event){
+ const r=cropCanvas.getBoundingClientRect();
+ return {
+  x:bound(Math.round((event.clientX-r.left)*S.W/r.width),0,S.W),
+  y:bound(Math.round((event.clientY-r.top)*S.H/r.height),0,S.H)
+ };
+}
+cropCanvas.onpointerdown=event=>{
+ if(!S.ready||S.working||hostBusy()||S.lost||event.button!==0)return;
+ event.preventDefault();pause3D();modified();
+ S.drag={start:cropPoint(event),old:{...S.crop},id:event.pointerId};
+ cropCanvas.setPointerCapture(event.pointerId);
+};
+cropCanvas.onpointermove=event=>{
+ if(!S.drag||event.pointerId!==S.drag.id)return;
+ const p=cropPoint(event),a=S.drag.start;
+ S.crop={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};
+ syncCrop();drawCrop();
+};
+function finishCrop(restore=false){
+ if(!S.drag)return;
+ const d=S.drag;
+ if(restore||S.crop.w<2||S.crop.h<2)S.crop=d.old;
+ S.drag=null;syncCrop();
+ if(cropCanvas.hasPointerCapture(d.id))cropCanvas.releasePointerCapture(d.id);
+}
+cropCanvas.onpointerup=event=>{
+ if(S.drag?.id===event.pointerId)finishCrop();
+};
+cropCanvas.onpointercancel=()=>finishCrop(true);
+cropCanvas.onlostpointercapture=()=>finishCrop(true);
+
+/* 本機檔案路徑與 URL 解析，不讓模型自行向外部網址取材。 */
+function normalizePath(path){
+ const parts=String(path).replace(/\\/g,"/").replace(/^\/+/,"").split("/");
+ const out=[];
+ for(const part of parts){
+  if(!part||part===".")continue;
+  if(part===".."){
+   if(!out.length)throw Error("素材路徑超出選取資料夾。");
+   out.pop();
+  }else out.push(part);
+ }
+ return out.join("/");
+}
+function basename(path){return path.replace(/\\/g,"/").split("/").pop();}
+function extension(path){return (path.match(/\.([^./\\]+)$/)?.[1]||"").toLowerCase();}
+function ingest(list){
+ if(S.working||hostBusy())return;
+ try{
+  if(!list.length)return;
+  if(list.length>1500)throw Error("一次最多選取 1500 個檔案。");
+  const map=new Map();let total=0;
+  for(const f of list){
+   total+=f.size;
+   if(total>SIZE_LIMIT)throw Error("選取檔案合計超過 200 MB。");
+   const path=normalizePath(f.webkitRelativePath||f.name);
+   if(map.has(path))throw Error("重複檔名："+path+"；請選取整個資料夾以保留路徑。");
+   map.set(path,f);
+  }
+  const models=[...map.keys()].filter(p=>["glb","gltf","fbx","obj","stl","ply"].includes(extension(p)));
+  if(!models.length)throw Error("沒有找到 GLB、glTF、FBX、OBJ、STL 或 PLY 主模型。");
+  S.files=map;S.modelPaths=models;
+  E("m-models").replaceChildren();
+  models.forEach(path=>E("m-models").add(new Option(path,path)));
+  E("m-file-info").textContent=`已選 ${map.size} 個檔案，${(total/1048576).toFixed(2)} MB；找到 ${models.length} 個主模型。`;
+  say(S.ready?"選擇主模型，再按「載入選定模型」。":"已選取素材，請先啟用 3D。");
+  sync();
+ }catch(error){say(error.message);}
+}
+E("m-files-button").onclick=()=>E("m-files").click();
+E("m-folder-button").onclick=()=>E("m-folder").click();
+for(const id of ["m-files","m-folder"]){
+ E(id).onchange=event=>{
+  ingest(Array.from(event.target.files));event.target.value="";
+ };
+}
+function createLocalResources(files){
+ const urls=new Map(),errors=[],warnings=new Set();
+ let pending=0;
+ const prefix="https://studio-assets.invalid/";
+ const manager=new T.LoadingManager();
+
+ function findPath(request){
+  let raw=String(request).replace(/\\/g,"/");
+  if(/^[a-z]:\//i.test(raw)){
+   raw=basename(raw);
+  }else if(/^[a-z][a-z\d+.-]*:/i.test(raw)||raw.startsWith("//")){
+   const u=new URL(raw,prefix);
+   if(u.origin!==new URL(prefix).origin)
+    throw Error("模型要求外部網址，已阻止："+raw);
+   raw=u.pathname;
+  }
+  raw=raw.split(/[?#]/)[0];
+  try{raw=decodeURIComponent(raw);}catch(e){}
+  let normalized;
+  try{normalized=normalizePath(raw);}
+  catch(e){normalized=basename(raw);}
+  if(files.has(normalized))return normalized;
+
+  const lower=[...files.keys()].filter(p=>p.toLowerCase()===normalized.toLowerCase());
+  if(lower.length===1)return lower[0];
+
+  const name=basename(normalized).toLowerCase();
+  const matches=[...files.keys()].filter(p=>basename(p).toLowerCase()===name);
+  if(matches.length===1){
+   warnings.add("部分資源以唯一檔名配對；若材質不符，請改選完整資料夾。");
+   return matches[0];
+  }
+  if(matches.length>1)throw Error("無法唯一對應同名素材："+basename(normalized)+"；請保留資料夾結構。");
+  throw Error("缺少本機素材："+normalized);
+ }
+ function getURL(path){
+  if(!urls.has(path))urls.set(path,URL.createObjectURL(files.get(path)));
+  return urls.get(path);
+ }
+ manager.setURLModifier(request=>{
+  if(/^(data:|blob:)/i.test(request))return request;
+  try{return getURL(findPath(request));}
+  catch(error){errors.push(error.message);throw error;}
+ });
+ const start=manager.itemStart.bind(manager),end=manager.itemEnd.bind(manager);
+ manager.itemStart=url=>{pending++;start(url);};
+ manager.itemEnd=url=>{pending=Math.max(0,pending-1);end(url);};
+ manager.onError=url=>errors.push("素材載入失敗："+url);
+
+ function pathURL(path){
+  return prefix+path.split("/").map(encodeURIComponent).join("/");
+ }
+ function directoryURL(path){
+  const at=path.lastIndexOf("/");
+  return at<0?prefix:pathURL(path.slice(0,at+1));
+ }
+ async function settle(){
+  const begin=performance.now();
+  while(pending){
+   check();
+   if(errors.length)throw Error(errors.join("\n"));
+   if(performance.now()-begin>60000)throw Error("等待模型貼圖逾時。");
+   await wait(30);
+  }
+  if(errors.length)throw Error(errors.join("\n"));
+ }
+ return {
+  manager,errors,warnings,files,findPath,pathURL,directoryURL,settle,
+  release(){for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();}
+ };
+}
+
+/* 資源釋放：幾何、材質、貼圖、骨架與本機 URL。 */
+function disposePack(pack){
+ if(!pack)return;
+ if(pack.wrapper?.parent)pack.wrapper.parent.remove(pack.wrapper);
+ const geometries=new Set(),materials=new Set(pack.extraMaterials||[]);
+ const textures=new Set(),skeletons=new Set(),images=new Set();
+ for(const object of pack.roots||[]){
+  object.traverse(o=>{
+   if(o.geometry)geometries.add(o.geometry);
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   mats.filter(Boolean).forEach(m=>materials.add(m));
+   if(o.isSkinnedMesh&&o.skeleton)skeletons.add(o.skeleton);
+  });
+ }
+ for(const m of materials){
+  for(const v of Object.values(m))if(v?.isTexture)textures.add(v);
+ }
+ for(const texture of textures){
+  if(texture.image)images.add(texture.image);
+  texture.dispose();
+ }
+ for(const image of images){
+  if(typeof image.close==="function")image.close();
+ }
+ geometries.forEach(g=>g.dispose());
+ materials.forEach(m=>m.dispose());
+ skeletons.forEach(s=>s.dispose());
+ pack.resources?.release();
+}
+
+function readGLBJSON(buffer){
+ if(buffer.byteLength<20)throw Error("GLB 檔案不完整。");
+ const view=new DataView(buffer);
+ if(view.getUint32(0,true)!==0x46546c67)throw Error("副檔名是 GLB，但內容不是 GLB。");
+ if(view.getUint32(4,true)!==2)throw Error("只支援 glTF 2.0。");
+ if(view.getUint32(8,true)!==buffer.byteLength)throw Error("GLB 長度不符，可能尚未下載完整。");
+ let offset=12,json=null,index=0;
+ while(offset<buffer.byteLength){
+  if(offset+8>buffer.byteLength)throw Error("GLB 區塊標頭不完整。");
+  const n=view.getUint32(offset,true),kind=view.getUint32(offset+4,true);
+  offset+=8;
+  if(n%4||offset+n>buffer.byteLength)throw Error("GLB 區塊長度不合法。");
+  if(index===0&&kind!==0x4e4f534a)throw Error("GLB 第一區塊不是 JSON。");
+  if(kind===0x4e4f534a){
+   if(json)throw Error("GLB 含重複 JSON 區塊。");
+   json=JSON.parse(new TextDecoder().decode(new Uint8Array(buffer,offset,n)).replace(/\0+$/,"").trim());
+  }
+  offset+=n;index++;
+ }
+ if(!json)throw Error("GLB 缺少 JSON 區塊。");
+ return json;
+}
+function validateGLTF(json,res,mainPath){
+ if(!json?.asset||!/^2(?:\.|$)/.test(String(json.asset.version)))
+  throw Error("只支援 glTF 2.x 資料。");
+ let count=0;
+ for(const a of json.accessors||[]){
+  count+=Number(a.count)||0;
+  if(count>30000000)throw Error("glTF 資料量過大，請簡化模型或動畫。");
+ }
+ for(const entry of [...(json.buffers||[]),...(json.images||[])]){
+  if(!entry.uri||/^data:/i.test(entry.uri))continue;
+  const url=new URL(String(entry.uri).replace(/\\/g,"/"),res.directoryURL(mainPath));
+  res.findPath(url.href);
+ }
+}
+
+function defaultMaterial(vertexColors=false){
+ return new T.MeshStandardMaterial({
+  color:0xd4dbe5,roughness:.7,metalness:.05,
+  vertexColors,side:T.DoubleSide
+ });
+}
+async function parseModel(path,res){
+ const file=res.files.get(path),ext=extension(path);
+ if(file.size>100*1024*1024)throw Error("主模型超過 100 MB，請先簡化。");
+ const pack={roots:[],resources:res,extraMaterials:[],clips:[],wrapper:null};
+ const decoders=[];
+ try{
+  const buffer=await file.arrayBuffer();check();
+  if(ext==="glb"||ext==="gltf"){
+   const text=ext==="gltf"?new TextDecoder().decode(buffer).replace(/^\uFEFF/,""):null;
+   const json=ext==="glb"?readGLBJSON(buffer):JSON.parse(text);
+   validateGLTF(json,res,path);
+   say("載入 glTF 解析器與壓縮解碼支援…");
+   const modules=await Promise.all([
+    addons("loaders/GLTFLoader.js"),
+    addons("loaders/DRACOLoader.js"),
+    addons("loaders/KTX2Loader.js"),
+    addons("libs/meshopt_decoder.module.js")
+   ]);
+   check();
+   const loader=new modules[0].GLTFLoader(res.manager);
+   const draco=new modules[1].DRACOLoader();
+   draco.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/draco/gltf/");
+   draco.setWorkerLimit(2);decoders.push(draco);
+   const ktx=new modules[2].KTX2Loader();
+   ktx.setTranscoderPath("https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/basis/");
+   ktx.setWorkerLimit(2);ktx.detectSupport(S.renderer);decoders.push(ktx);
+   loader.setDRACOLoader(draco);
+   loader.setKTX2Loader(ktx);
+   loader.setMeshoptDecoder(modules[3].MeshoptDecoder);
+   const gltf=await loader.parseAsync(ext==="glb"?buffer:text,res.directoryURL(path));
+   pack.roots=gltf.scenes?.length?gltf.scenes:[gltf.scene];
+   pack.object=gltf.scene||pack.roots[0];
+   pack.clips=gltf.animations||[];
+  }else if(ext==="fbx"){
+   const {FBXLoader}=await addons("loaders/FBXLoader.js");check();
+   pack.object=new FBXLoader(res.manager).parse(buffer,res.directoryURL(path));
+   pack.roots=[pack.object];pack.clips=pack.object.animations||[];
+  }else if(ext==="obj"){
+   const [{OBJLoader},{MTLLoader}]=await Promise.all([
+    addons("loaders/OBJLoader.js"),addons("loaders/MTLLoader.js")
+   ]);
+   check();
+   const text=new TextDecoder().decode(buffer).replace(/^\uFEFF/,"");
+   const refs=[...text.matchAll(/^\s*mtllib\s+(.+)$/gmi)]
+    .map(m=>m[1].replace(/\s+#.*$/,"").trim()).filter(Boolean);
+   const mtlFiles=new Set();
+   for(const ref of refs){
+    try{
+     mtlFiles.add(res.findPath(new URL(ref.replace(/\\/g,"/"),res.directoryURL(path)).href));
+    }catch(firstError){
+     const parts=ref.split(/\s+/);
+     if(parts.length<2)throw firstError;
+     for(const part of parts){
+      mtlFiles.add(res.findPath(new URL(part.replace(/\\/g,"/"),res.directoryURL(path)).href));
+     }
+    }
+   }
+   const creators=[];
+   for(const mtlPath of mtlFiles){
+    const source=await res.files.get(mtlPath).text();check();
+    const creator=new MTLLoader(res.manager).parse(source,res.directoryURL(mtlPath));
+    creators.push(creator);
+   }
+   const obj=new OBJLoader(res.manager);
+   if(creators.length){
+    obj.setMaterials({
+     create(name){
+      for(let i=creators.length-1;i>=0;i--){
+       if(Object.prototype.hasOwnProperty.call(creators[i].materialsInfo,name))
+        return creators[i].create(name);
+      }
+      throw Error("MTL 中找不到材質："+name);
+     }
+    });
+   }
+   pack.object=obj.parse(text);pack.roots=[pack.object];
+  }else if(ext==="stl"){
+   const {STLLoader}=await addons("loaders/STLLoader.js");check();
+   const geometry=new STLLoader().parse(buffer);
+   const material=defaultMaterial(!!geometry.attributes.color);
+   if(geometry.hasColors&&Number.isFinite(geometry.alpha)){
+    material.opacity=geometry.alpha;material.transparent=geometry.alpha<1;
+   }
+   pack.object=new T.Mesh(geometry,material);pack.roots=[pack.object];
+   pack.object.name=file.name;
+  }else if(ext==="ply"){
+   const {PLYLoader}=await addons("loaders/PLYLoader.js");check();
+   const geometry=new PLYLoader().parse(buffer);
+   const header=new TextDecoder().decode(new Uint8Array(buffer,0,Math.min(buffer.byteLength,65536))).split("end_header")[0];
+   const faces=Number(header.match(/element\s+face\s+(\d+)/i)?.[1]||0);
+   if(faces>0){
+    if(!geometry.attributes.normal)geometry.computeVertexNormals();
+    pack.object=new T.Mesh(geometry,defaultMaterial(!!geometry.attributes.color));
+   }else{
+    geometry.computeBoundingSphere();
+    const size=Math.max((geometry.boundingSphere?.radius||1)*.004,1e-6);
+    pack.object=new T.Points(geometry,new T.PointsMaterial({
+     color:geometry.attributes.color?0xffffff:0xd4dbe5,
+     vertexColors:!!geometry.attributes.color,size,sizeAttenuation:true
+    }));
+   }
+   pack.object.name=file.name;pack.roots=[pack.object];
+  }else throw Error("不支援這個模型格式。");
+
+  if(!pack.object)throw Error("找不到可顯示的場景。");
+  await res.settle();check();
+  pack.wrapper=new T.Group();
+  pack.wrapper.name="整個模型";
+  pack.wrapper.add(pack.object);
+  pack.wrapper.updateMatrixWorld(true);
+
+  pack.objects=[];pack.originals=new Map();pack.materialDefaults=new Map();
+  let vertices=0,nodes=0;
+  pack.wrapper.traverse(o=>{
+   nodes++;
+   if(o.geometry?.attributes?.position)vertices+=o.geometry.attributes.position.count;
+   pack.originals.set(o,{
+    position:o.position.clone(),quaternion:o.quaternion.clone(),scale:o.scale.clone(),
+    visible:o.visible
+   });
+   if(!isDrawable(o))return;
+   pack.objects.push(o);
+   const mats=Array.isArray(o.material)?o.material:[o.material];
+   const clones=mats.map(m=>{
+    if(!m)return m;
+    pack.extraMaterials.push(m);
+    const clone=m.clone();
+    pack.materialDefaults.set(clone,{
+     wireframe:clone.wireframe,
+     polygonOffset:clone.polygonOffset,
+     polygonOffsetFactor:clone.polygonOffsetFactor,
+     polygonOffsetUnits:clone.polygonOffsetUnits
+    });
+    return clone;
+   });
+   o.material=Array.isArray(o.material)?clones:clones[0];
+  });
+  if(nodes>5000||pack.objects.length>1500||vertices>5000000)
+   throw Error("模型過於複雜：最多 5000 節點、1500 顯示物件、500 萬頂點。請先簡化。");
+  if(!pack.objects.length)throw Error("模型沒有可顯示的網格、線段或點雲。");
+  const box=new T.Box3().setFromObject(pack.wrapper,true);
+  const sphere=box.getBoundingSphere(new T.Sphere());
+  if(box.isEmpty()||!Number.isFinite(sphere.radius)||sphere.radius<=0)
+   throw Error("模型幾何範圍不合法或沒有尺寸。");
+  pack.name=basename(path).replace(/\.[^.]+$/,"").replace(/[^\p{L}\p{N}_-]/gu,"_").slice(0,70)||"model";
+  pack.source=path;
+  return pack;
+ }catch(error){
+  disposePack(pack);throw error;
+ }finally{
+  decoders.forEach(d=>d.dispose());
+ }
+}
+
+function resetAnimationUI(){
+ E("m-animation").replaceChildren();
+ E("m-animation").add(new Option("原始姿勢／不播放動畫","-1"));
+ S.clips.forEach((clip,i)=>{
+  E("m-animation").add(new Option(
+   (clip.name||"動畫 "+(i+1))+"（"+Math.max(0,clip.duration).toFixed(2)+" 秒）",String(i)
+  ));
+ });
+ E("m-animation").value="-1";
+}
+function selectAnimation(){
+ pause3D();
+ S.mixer?.stopAllAction();
+ S.action=null;S.duration=0;
+ const index=Number(E("m-animation").value);
+ if(S.mixer&&index>=0&&S.clips[index]){
+  const duration=S.clips[index].duration;
+  if(Number.isFinite(duration)&&duration>0){
+   S.duration=duration;
+   S.action=S.mixer.clipAction(S.clips[index]);
+   S.action.reset().setLoop(T.LoopRepeat,Infinity).play();
+  }
+ }
+ E("m-time").max=S.duration||1;
+ E("m-start").value=0;E("m-end").value=S.duration||1;
+ setTime(0);showSelection();sync();modified();
+}
+function removeCurrent(){
+ pause3D();
+ if(S.mixer){
+  S.mixer.stopAllAction();
+  if(S.pack)S.mixer.uncacheRoot(S.pack.wrapper);
+ }
+ disposePack(S.pack);
+ S.pack=null;S.mixer=null;S.clips=[];S.action=null;
+ S.duration=0;S.time=0;S.selected=null;S.isolation=null;
+ resetAnimationUI();setTime(0);renderObjectList();showSelection();clearResult();
+}
+E("m-load").onclick=()=>task(async()=>{
+ const path=E("m-models").value;
+ if(!S.files.has(path))throw Error("請先選取主模型與相關檔案。");
+ say("讀取模型："+path);
+ const resources=createLocalResources(new Map(S.files));
+ let pack=null,committed=false;
+ try{
+  pack=await parseModel(path,resources);check();
+  removeCurrent();
+  S.pack=pack;S.scene.add(pack.wrapper);committed=true;
+  S.clips=pack.clips;
+  S.mixer=new T.AnimationMixer(pack.wrapper);
+  S.selected=pack.wrapper;S.isolation=null;
+  E("m-wire").checked=false;
+  resetAnimationUI();
+  E("m-animation").value=S.clips.length?"0":"-1";
+  selectAnimation();home();fullCrop();renderObjectList();showSelection();
+  E("m-progress").value=100;
+  say(
+   `已載入：${path}\n${pack.objects.length} 個顯示物件，${S.clips.length} 段內建動畫。`+
+   (!S.clips.length?"\n此模型沒有內建動畫，只能輸出靜態姿勢。":"")+
+   (resources.warnings.size?"\n"+[...resources.warnings].join("\n"):"")
+  );
+ }finally{
+  if(!committed){
+   if(pack)disposePack(pack);
+   else resources.release();
+  }
+ }
+});
+E("m-unload").onclick=()=>{
+ if(!S.pack)return;
+ if(!confirm("卸載目前 3D 模型？未保存的 3D 調整不會寫入原專案 JSON。"))return;
+ removeCurrent();sync();say("模型已卸載；已選取的檔案清單仍保留，可重新載入。");
+};
+E("m-animation").onchange=selectAnimation;
+E("m-play").onclick=()=>{
+ if(!S.action)return;
+ modified();S.playing=!S.playing;
+ E("m-play").textContent=S.playing?"暫停":"播放";
+};
+E("m-time").oninput=()=>{
+ pause3D();setTime(E("m-time").value);showSelection();modified();
+};
+
+/* 物件清單與可见性；不拆網格、不修改權重。 */
+function objectLabel(o,i){
+ const type=o.isSkinnedMesh?"骨架網格":o.isPoints?"點雲":o.isLine?"線段":"網格";
+ return `${i+1}. ${o.name||"未命名"}〔${type}〕`;
+}
+function effectiveVisible(o){
+ for(let p=o;p;p=p.parent)if(!p.visible)return false;
+ return true;
+}
+function renderObjectList(){
+ E("m-objects").replaceChildren();selectedObjectRows=[];
+ if(!S.pack){E("m-objects").textContent="尚未載入模型。";return;}
+ S.pack.objects.forEach((o,i)=>{
+  const row=document.createElement("div");
+  row.className="m-object"+(o===S.selected?" chosen":"");
+  const checkbox=document.createElement("input");
+  checkbox.type="checkbox";checkbox.checked=o.visible;
+  checkbox.setAttribute("aria-label","顯示 "+(o.name||"物件 "+(i+1)));
+  checkbox.onchange=()=>{
+   o.visible=checkbox.checked;modified();showSelection();updateObjectRows();
+  };
+  const button=document.createElement("button");
+  button.textContent=objectLabel(o,i);
+  button.onclick=()=>{S.selected=o;showSelection();updateObjectRows();sync();};
+  row.append(checkbox,button);
+  E("m-objects").append(row);selectedObjectRows.push({row,checkbox,button,object:o});
+ });
+ updateObjectRows();sync();
+}
+function updateObjectRows(){
+ for(const item of selectedObjectRows){
+  item.checkbox.checked=item.object.visible;
+  item.row.classList.toggle("chosen",item.object===S.selected);
+  item.button.title=effectiveVisible(item.object)?"目前可見":"目前隱藏，或父節點隱藏";
+ }
+}
+function showSelection(){
+ const o=S.selected;
+ if(!o){E("m-selected-info").textContent="尚未選取物件。";return;}
+ const isWhole=o===S.pack?.wrapper;
+ E("m-selected-info").textContent=
+  (isWhole?"已選：整個模型":"已選："+(o.name||"未命名物件"))+
+  (effectiveVisible(o)?"｜可見":"｜目前被隱藏")+
+  (!canTransform()?"｜骨架網格或動畫模式下不開放個別物件變換。":"｜本地座標／角度值。");
+ const values=[
+  o.position.x,o.position.y,o.position.z,
+  T.MathUtils.radToDeg(o.rotation.x),T.MathUtils.radToDeg(o.rotation.y),T.MathUtils.radToDeg(o.rotation.z),
+  o.scale.x,o.scale.y,o.scale.z
+ ];
+ transformIds.forEach((id,i)=>E(id).value=Number(values[i].toFixed(6)));
+}
+E("m-whole").onclick=()=>{
+ S.selected=S.pack?.wrapper||null;showSelection();updateObjectRows();sync();
+};
+E("m-show-all").onclick=()=>{
+ if(!S.pack)return;
+ S.pack.wrapper.traverse(o=>o.visible=true);
+ modified();updateObjectRows();showSelection();sync();
+};
+E("m-isolate").onclick=()=>{
+ const target=S.selected;if(!isDrawable(target)||!S.pack)return;
+ if(!S.isolation){
+  S.isolation=new Map();
+  S.pack.wrapper.traverse(o=>S.isolation.set(o,o.visible));
+ }
+ S.pack.objects.forEach(o=>o.visible=o===target);
+ for(let p=target;p&&p!==S.scene;p=p.parent)p.visible=true;
+ modified();updateObjectRows();showSelection();sync();
+};
+E("m-restore-isolate").onclick=()=>{
+ if(!S.isolation)return;
+ for(const [o,visible] of S.isolation)o.visible=visible;
+ S.isolation=null;modified();updateObjectRows();showSelection();sync();
+};
+E("m-transform").onclick=()=>{
+ if(!canTransform())return;
+ const o=S.selected;
+ const values=transformIds.map(id=>Number(E(id).value));
+ if(values.some(v=>!Number.isFinite(v)))return say("變換數值必須是有限數字。");
+ if(values.slice(0,3).some(v=>Math.abs(v)>1e8))return say("位置數值過大。");
+ if(values.slice(3,6).some(v=>Math.abs(v)>360000))return say("旋轉數值過大。");
+ if(values.slice(6).some(v=>v<.001||v>1000))return say("縮放範圍為 0.001～1000。");
+ o.position.set(...values.slice(0,3));
+ o.rotation.set(...values.slice(3,6).map(T.MathUtils.degToRad),o.rotation.order);
+ o.scale.set(...values.slice(6));o.updateMatrix();o.updateMatrixWorld(true);
+ modified();showSelection();
+ say("已套用。若模型離開畫面，請按「重新框住模型」。");
+};
+E("m-reset-transform").onclick=()=>{
+ if(!canTransform())return;
+ const o=S.selected,original=S.pack.originals.get(o);
+ if(!original)return;
+ o.position.copy(original.position);o.quaternion.copy(original.quaternion);o.scale.copy(original.scale);
+ o.updateMatrix();o.updateMatrixWorld(true);modified();showSelection();
+};
+function eachMaterial(o,fn){
+ (Array.isArray(o.material)?o.material:[o.material]).filter(Boolean).forEach(fn);
+}
+E("m-wire").onchange=()=>{
+ if(!S.pack)return;
+ for(const o of S.pack.objects)eachMaterial(o,m=>{
+  if(!("wireframe" in m))return;
+  m.wireframe=E("m-wire").checked?true:!!S.pack.materialDefaults.get(m)?.wireframe;
+  m.needsUpdate=true;
+ });
+ modified();
+};
+const depthObjects=new WeakSet();
+E("m-depth").onclick=()=>{
+ const o=S.selected;if(!o?.isMesh||!S.pack)return;
+ const enable=!depthObjects.has(o);
+ eachMaterial(o,m=>{
+  const old=S.pack.materialDefaults.get(m);
+  if(enable){
+   m.polygonOffset=true;m.polygonOffsetFactor=-1;m.polygonOffsetUnits=-1;
+  }else if(old){
+   m.polygonOffset=old.polygonOffset;
+   m.polygonOffsetFactor=old.polygonOffsetFactor;
+   m.polygonOffsetUnits=old.polygonOffsetUnits;
+  }
+  m.needsUpdate=true;
+ });
+ if(enable)depthObjects.add(o);else depthObjects.delete(o);
+ modified();say(enable
+  ?"已啟用深度微偏移；只處理近乎共面的閃爍，不修正實際穿模。"
+  :"已還原選取物件的原始深度設定。");
+};
+
+/* 輸出與取樣 */
+function sampling(){
+ if(!S.action||S.duration<=0)throw Error("請先選擇有時間長度的內建動畫。");
+ const fps=number("m-fps",1,30,10);
+ const start=number("m-start",0,S.duration,0);
+ const end=number("m-end",0,S.duration,S.duration);
+ if(end<=start)throw Error("結束時間必須大於開始時間。");
+ const count=Math.ceil((end-start)*fps-1e-8);
+ if(count<1||count>300)throw Error("單次最多 300 格，請縮短片段或降低 FPS。");
+ if(count*S.crop.w*S.crop.h>80000000)throw Error("取樣超過 8000 萬像素，請縮小畫布、裁切範圍或減少影格。");
+ return {fps,start,end,count};
+}
+function atlasLimit(w,h){
+ if(w>16384||h>16384||w*h>32000000)
+  throw Error("圖集超過單邊 16384 或 3200 萬像素。");
+}
+function drawSample(ctx,x=0,y=0){
+ render3D();
+ const r=S.crop;
+ ctx.drawImage(S.renderer.domElement,r.x,r.y,r.w,r.h,x,y,r.w,r.h);
+}
+function cameraMetadata(){
+ const c=S.camera;
+ return {
+  type:c.isOrthographicCamera?"orthographic":"perspective",
+  position:c.position.toArray(),target:S.controls.target.toArray(),up:c.up.toArray(),
+  zoom:c.zoom,
+  ...(c.isPerspectiveCamera?{fov:c.fov}:{left:c.left,right:c.right,top:c.top,bottom:c.bottom})
+ };
+}
+E("m-png").onclick=()=>task(async()=>{
+ if(!S.pack)throw Error("請先載入模型。");
+ clearResult();say("建立 PNG…");
+ const c=newCanvas(S.crop.w,S.crop.h);
+ try{
+  drawSample(c.getContext("2d"));
+  const blob=await encodePNG(c);check();
+  showResult(blob,S.pack.name+"_frame.png");
+  E("m-progress").value=100;say("PNG 已建立，請按下載。");
+ }finally{c.width=c.height=1;}
+},{restore:true});
+
+E("m-sheet").onclick=()=>task(async()=>{
+ const plan=sampling(),r={...S.crop};
+ const cols=Math.min(plan.count,Math.round(number("m-cols",1,32,4)));
+ const rows=Math.ceil(plan.count/cols);
+ atlasLimit(r.w*cols,r.h*rows);clearResult();
+ const c=newCanvas(r.w*cols,r.h*rows);
+ try{
+  const ctx=c.getContext("2d");
+  for(let i=0;i<plan.count;i++){
+   check();setTime(plan.start+i/plan.fps);
+   drawSample(ctx,(i%cols)*r.w,Math.floor(i/cols)*r.h);
+   E("m-progress").value=(i+1)/plan.count*100;
+   say(`建立圖集 ${i+1}/${plan.count}`);await wait();
+  }
+  const blob=await encodePNG(c);check();
+  showResult(blob,`${S.pack.name}_${plan.count}frames_${plan.fps}fps_${cols}cols_${r.w}x${r.h}.png`);
+  say(`圖集完成：${plan.count} 格，每列 ${cols} 格，每格 ${r.w} × ${r.h}。這是靜態 PNG，請按下載。`);
+ }finally{c.width=c.height=1;}
+},{restore:true});
+
+E("m-zip").onclick=()=>task(async()=>{
+ const plan=sampling(),r={...S.crop};
+ clearResult();say("載入 ZIP 函式庫…");
+ const {zipSync}=await import("https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js");
+ check();
+ const files=Object.create(null),metadata=[];
+ const c=newCanvas(r.w,r.h),ctx=c.getContext("2d");
+ let bytes=0;
+ try{
+  for(let i=0;i<plan.count;i++){
+   check();const time=plan.start+i/plan.fps;
+   setTime(time);ctx.clearRect(0,0,r.w,r.h);drawSample(ctx);
+   const blob=await encodePNG(c);check();
+   bytes+=blob.size;
+   if(bytes>150*1024*1024)throw Error("PNG 總量超過 150 MB，請減少影格或縮小尺寸。");
+   const name="frame_"+String(i+1).padStart(4,"0")+".png";
+   files[name]=new Uint8Array(await blob.arrayBuffer());
+   metadata.push({file:name,timeSeconds:time});
+   E("m-progress").value=(i+1)/plan.count*95;
+   say(`擷取 PNG ${i+1}/${plan.count}`);await wait();
+  }
+  files["frames-info.json"]=new TextEncoder().encode(JSON.stringify({
+   format:"studio-3d-rendered-png-sequence",version:1,
+   source:S.pack.source,
+   animation:S.clips[Number(E("m-animation").value)]?.name||"",
+   fps:plan.fps,frameDurationMs:1000/plan.fps,
+   count:plan.count,startSeconds:plan.start,requestedEndSeconds:plan.end,
+   outputDurationSeconds:plan.count/plan.fps,
+   width:r.w,height:r.h,crop:r,canvas:{width:S.W,height:S.H},
+   camera:cameraMetadata(),frames:metadata,
+   note:"Frame metadata only. Not an animation studio project; source model and 3D edits are not embedded."
+  },null,2));
+  check();say("封裝 ZIP…此步驟可能短暫暫停介面。");await wait();check();
+  const zipped=zipSync(files,{level:0});check();
+  showResult(new Blob([zipped],{type:"application/zip"}),S.pack.name+"_frames.zip");
+  E("m-progress").value=100;
+  say(
+   `ZIP 已建立：${plan.count} 格，請按下載。\n`+
+   `解壓後將 PNG 匯入 2D 區，影格時間約 ${(1000/plan.fps).toFixed(2)} 毫秒。\n`+
+   "原 2D 工具以 10 毫秒取整；10／20 FPS 較容易精確對應。"
+  );
+ }finally{c.width=c.height=1;}
+},{restore:true});
+
+E("m-four").onclick=()=>task(async()=>{
+ if(!S.pack)throw Error("請先載入模型。");
+ const r={...S.crop};atlasLimit(r.w*2,r.h*2);
+ const offset=S.camera.position.clone().sub(S.controls.target);
+ const radius=offset.length(),horizontal=Math.hypot(offset.x,offset.z);
+ if(!radius||horizontal<radius*.05)throw Error("目前接近俯視，請先旋轉到可辨識正面的視角。");
+ clearResult();
+ const angle=Math.atan2(offset.x,offset.z);
+ const offsets=[0,Math.PI,-Math.PI/2,Math.PI/2];
+ const names=["正面","背面","左側","右側"];
+ const c=newCanvas(r.w*2,r.h*2);
+ try{
+  const ctx=c.getContext("2d");
+  for(let i=0;i<4;i++){
+   check();const a=angle+offsets[i];
+   S.camera.position.set(
+    S.controls.target.x+Math.sin(a)*horizontal,
+    S.controls.target.y+offset.y,
+    S.controls.target.z+Math.cos(a)*horizontal
+   );
+   S.camera.lookAt(S.controls.target);
+   drawSample(ctx,(i%2)*r.w,Math.floor(i/2)*r.h);
+   E("m-progress").value=(i+1)*25;
+   say("擷取："+names[i]);await wait();
+  }
+  const blob=await encodePNG(c);check();
+  showResult(blob,`${S.pack.name}_four_2x2_${r.w}x${r.h}.png`);
+  say("四向圖集完成：左上正面、右上背面、左下左側、右下右側。使用目前姿勢及相同裁切框，請按下載。");
+ }finally{c.width=c.height=1;}
+},{restore:true});
+
+for(const id of ["m-alpha","m-bg","m-light","m-fps","m-start","m-end","m-cols"]){
+ E(id).addEventListener("input",modified);
+}
+window.addEventListener("beforeunload",event=>{
+ if(S.working||S.pack){
+  event.preventDefault();event.returnValue="";
+ }
+});
+syncCrop();showSelection();sync();
+})();
+</script>
+<!-- STUDIO_MULTIFORMAT_3D_END -->
 </body>
 </html>
