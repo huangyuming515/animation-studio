@@ -4672,5 +4672,778 @@ activate("background");
 })();
 </script>
 <!-- STUDIO_INDEPENDENT_WORKSPACES_END -->
+<!-- STUDIO_BACKGROUND_PLUS_START -->
+<script>
+(function installBackgroundPlus(){
+"use strict";
+
+/*
+支援：
+1. 原始單頁版。
+2. 前一版 iframe 獨立工作區。
+不更動其他工作區的編輯工具。
+*/
+function enhanceBackground(){
+"use strict";
+if(window.__backgroundPlusReady)return;
+
+const E=id=>document.getElementById(id);
+if(!E("editor") || typeof frames==="undefined")return;
+window.__backgroundPlusReady=true;
+
+const section=E("editSection");
+const surface=E("editor");
+const ctx=surface.getContext("2d");
+const stage=surface.closest(".stage");
+const scope=document.createElement("div");
+
+scope.id="backgroundPlus";
+scope.dataset.studioLanguageOwned="1";
+scope.innerHTML=`
+<h3>加強去背景</h3>
+<div class="row">
+ <button type="button" data-bg-mode="pick">① 吸取背景色</button>
+ <button type="button" data-bg-mode="click">② 點除殘留</button>
+ <button type="button" data-bg-mode="erase">③ 擦除筆刷</button>
+ <button type="button" data-bg-mode="restore">④ 還原筆刷</button>
+ <button type="button" data-bg-mode="region">框選處理範圍</button>
+</div>
+<div class="row">
+ <button type="button" id="bp-clear-region">取消範圍限制</button>
+ <label><input type="checkbox" id="bp-local" checked>
+ 點除只處理相連區域</label>
+</div>
+<div class="row">
+ <label>筆刷大小
+  <input id="bp-brush" type="range" min="2" max="300" value="24">
+  <span id="bp-brush-value">24 px</span>
+ </label>
+ <button type="button" id="bp-undo">多步復原</button>
+ <span id="bp-history" class="note"></span>
+</div>
+<div class="row">
+ <label>透明區檢查
+  <select id="bp-backdrop">
+   <option value="checker">棋盤格</option>
+   <option value="white">白底</option>
+   <option value="black">黑底</option>
+   <option value="pink">粉紅底</option>
+  </select>
+ </label>
+ <label>檢視
+  <select id="bp-zoom">
+   <option value="fit">符合畫面</option>
+   <option value="1">原圖 100%</option>
+   <option value="2">原圖 200%</option>
+   <option value="4">原圖 400%</option>
+  </select>
+ </label>
+</div>
+<div class="row">
+ <button type="button" id="bp-shrink">透明邊緣內縮 1 px</button>
+ <button type="button" id="bp-soften">柔化透明邊緣</button>
+ <button type="button" id="bp-png">下載去背 PNG</button>
+ <a id="bp-download" class="btn" hidden download>下載 PNG</a>
+</div>
+<p id="bp-hint" class="note"></p>
+<p id="bp-region-info" class="note"></p>
+<p class="note">
+黑／白／粉紅底只用於檢查，不會寫入 PNG。
+還原筆刷取回圖片匯入時的內容。
+新增復原紀錄不寫入專案；最多保留每張 8 步，
+全部紀錄約 64 MB，超過會移除最舊步驟。
+</p>
+`;
+
+section.insertBefore(scope,stage);
+
+/* 使用原本的背景顏色、容差、批次及邊緣連通控制。 */
+E("tools").hidden=true;
+E("removeBg").closest(".row").hidden=false;
+E("batch").closest(".row").hidden=false;
+E("edgeOnly").closest("label").hidden=false;
+E("brush").closest("label").hidden=true;
+E("undo").hidden=true;
+E("toolHint").hidden=true;
+
+const css=document.createElement("style");
+css.textContent=`
+#backgroundPlus{
+ padding:12px;margin:12px 0;
+ border:1px solid #557ca9;border-radius:9px;background:#14253a
+}
+#backgroundPlus h3{margin:0 0 8px}
+#backgroundPlus [data-bg-mode].active{
+ background:#2563eb;outline:2px solid #9bc8ff
+}
+#editor{max-height:none;touch-action:none}
+#backgroundPlus .note{margin:7px 0}
+`;
+document.head.append(css);
+
+let mode="pick";
+let region=null;
+let regionFrame=null;
+let stroke=null;
+let downloadURL=null;
+let clock=0;
+let historyBytes=0;
+const histories=new Map();
+const MAX_HISTORY_BYTES=64*1024*1024;
+
+const tips={
+ pick:"先點圖片背景取色，再按原本的「去背」。",
+ click:"直接點殘留背景即可清除；使用上方容差判斷近似顏色。",
+ erase:"拖曳擦掉少量殘留；放大畫面並縮小筆刷，可修細部。",
+ restore:"拖曳刷回匯入時的原圖內容；背景也可能一起還原。",
+ region:"拖曳框選範圍；之後的去背、點除與筆刷只處理框內。"
+};
+
+function invalidateDownload(){
+ E("bp-download").hidden=true;
+ E("bp-download").removeAttribute("href");
+ if(downloadURL)URL.revokeObjectURL(downloadURL);
+ downloadURL=null;
+}
+
+function discardEntry(entry){
+ historyBytes-=entry.bytes;
+ entry.canvas.width=entry.canvas.height=1;
+}
+
+function historyInfo(){
+ const count=histories.get(current()?.id)?.length||0;
+ E("bp-history").textContent="目前可復原 "+count+" 步";
+}
+
+function pruneHistory(){
+ const ids=new Set(frames.map(f=>f.id));
+ for(const [id,list] of histories){
+  if(ids.has(id))continue;
+  list.forEach(discardEntry);
+  histories.delete(id);
+ }
+ historyInfo();
+}
+
+function remember(f){
+ const c=copyCanvas(img(f.asset));
+ const entry={
+  canvas:c,bytes:c.width*c.height*4,
+  time:++clock
+ };
+ const list=histories.get(f.id)||[];
+ list.push(entry);
+ histories.set(f.id,list);
+ historyBytes+=entry.bytes;
+
+ while(list.length>8)discardEntry(list.shift());
+
+ while(historyBytes>MAX_HISTORY_BYTES){
+  let oldest=null,oldestList=null;
+  for(const items of histories.values()){
+   if(items.length && (!oldest || items[0].time<oldest.time)){
+    oldest=items[0];
+    oldestList=items;
+   }
+  }
+  if(!oldestList)break;
+  discardEntry(oldestList.shift());
+ }
+ historyInfo();
+}
+
+function saveEdit(f,c){
+ /* 先確認素材容量足夠，再記錄及提交。 */
+ const id=addAsset(c,assets.get(f.asset).name);
+ remember(f);
+ f.undo=f.asset;
+ f.asset=id;
+}
+
+function currentRegion(f){
+ if(!region)return null;
+ const c=img(f.asset);
+ const x=Math.floor(region.x*c.width);
+ const y=Math.floor(region.y*c.height);
+ const right=Math.ceil((region.x+region.w)*c.width);
+ const bottom=Math.ceil((region.y+region.h)*c.height);
+ return {
+  x:clamp(x,0,c.width-1),
+  y:clamp(y,0,c.height-1),
+  right:clamp(right,1,c.width),
+  bottom:clamp(bottom,1,c.height)
+ };
+}
+
+function inRegion(x,y,r){
+ return !r ||
+  (x>=r.x && y>=r.y && x<r.right && y<r.bottom);
+}
+
+function regionInfo(){
+ E("bp-region-info").textContent=region
+  ?"已限制在藍框內。批次處理依圖片相對位置套用。"
+  :"目前沒有範圍限制。";
+}
+
+function zoom(){
+ const f=current();
+ if(!f)return;
+ const value=E("bp-zoom").value;
+ if(value==="fit"){
+  surface.style.width="";
+  surface.style.height="";
+  surface.style.maxWidth="100%";
+  surface.style.flexShrink="";
+  stage.style.justifyContent="center";
+ }else{
+  const c=img(f.asset),scale=Number(value);
+  surface.style.width=(c.width*scale)+"px";
+  surface.style.height=(c.height*scale)+"px";
+  surface.style.maxWidth="none";
+  surface.style.flexShrink="0";
+  stage.style.justifyContent="flex-start";
+ }
+}
+
+/* 讓原來的縮圖選取、復原及載入也維持框選顯示。 */
+const originalDrawEditor=drawEditor;
+drawEditor=function(rect=null){
+ const f=current();
+ if(f && regionFrame!==f.id){
+  region=null;
+  regionFrame=f.id;
+  regionInfo();
+ }
+ if(!rect && f && region){
+  const r=currentRegion(f);
+  rect={x:r.x,y:r.y,w:r.right-r.x,h:r.bottom-r.y};
+ }
+ originalDrawEditor(rect);
+ zoom();
+ historyInfo();
+};
+
+const originalRefresh=refresh;
+refresh=function(){
+ originalRefresh();
+ pruneHistory();
+ invalidateDownload();
+};
+
+function choose(next){
+ if(busy||gesture)return;
+ mode=next;
+ scope.querySelectorAll("[data-bg-mode]").forEach(button=>{
+  button.classList.toggle("active",button.dataset.bgMode===mode);
+ });
+ E("bp-hint").textContent=tips[mode];
+ surface.style.cursor=
+  mode==="erase"||mode==="restore"?"crosshair":"pointer";
+}
+
+scope.querySelectorAll("[data-bg-mode]").forEach(button=>{
+ button.onclick=()=>choose(button.dataset.bgMode);
+});
+
+E("bp-brush").oninput=()=>{
+ E("bp-brush-value").textContent=E("bp-brush").value+" px";
+};
+E("bp-zoom").onchange=zoom;
+E("bp-backdrop").onchange=()=>{
+ const value=E("bp-backdrop").value;
+ surface.classList.toggle("checker",value==="checker");
+ surface.style.backgroundColor={
+  checker:"",white:"#ffffff",black:"#000000",pink:"#ff79c6"
+ }[value];
+};
+
+E("bp-clear-region").onclick=()=>{
+ if(busy||gesture)return;
+ region=null;
+ regionInfo();
+ drawEditor();
+};
+
+function sourcePoint(event){
+ const f=current(),c=img(f.asset);
+ const r=surface.getBoundingClientRect();
+ return {
+  x:clamp((event.clientX-r.left)*c.width/r.width,0,c.width),
+  y:clamp((event.clientY-r.top)*c.height/r.height,0,c.height)
+ };
+}
+
+/* 只提交範圍內的處理結果，框外保持原樣。 */
+function commitWithinRegion(f,processed){
+ const r=currentRegion(f);
+ if(!r)return processed;
+
+ const c=copyCanvas(img(f.asset));
+ const context=c.getContext("2d");
+ const w=r.right-r.x,h=r.bottom-r.y;
+ context.clearRect(r.x,r.y,w,h);
+ context.drawImage(processed,r.x,r.y,w,h,r.x,r.y,w,h);
+ return c;
+}
+
+async function applyOperation(label,operation,targets){
+ await job(async()=>{
+  let done=0;
+  try{
+   for(let i=0;i<targets.length;i++){
+    check();
+    message(label+" "+(i+1)+"/"+targets.length);
+    await sleep();
+    check();
+
+    const f=targets[i];
+    const result=operation(f);
+    saveEdit(f,result);
+    done++;
+    collectAssets();
+    $("progress").value=(i+1)/targets.length*100;
+   }
+   message(label+"完成，可用多步復原退回。");
+  }finally{
+   if(done){
+    changed();
+    invalidateDownload();
+   }
+  }
+ });
+}
+
+/* 原本去背按鈕改為支援範圍及多步復原。 */
+E("removeBg").onclick=async()=>{
+ if(!allowed())return;
+ const rgb=[1,3,5].map(i=>parseInt(E("bg").value.slice(i,i+2),16));
+ const tolerance=Number(E("tolerance").value);
+ const edge=E("edgeOnly").checked;
+ const targets=E("batch").checked?[...frames]:[current()];
+
+ await applyOperation("去背",f=>{
+  const c=copyCanvas(img(f.asset));
+  removeBackground(c,rgb,tolerance,edge);
+  return commitWithinRegion(f,c);
+ },targets);
+};
+
+/*
+點除：
+以點擊位置為種子，清除相連的近似色。
+透明像素作為邊界，不跨過透明區搜尋另一塊背景。
+*/
+function eraseClicked(f,p){
+ const c=copyCanvas(img(f.asset));
+ const context=c.getContext("2d");
+ const image=context.getImageData(0,0,c.width,c.height);
+ const data=image.data,w=c.width,h=c.height;
+ const x=Math.min(w-1,Math.floor(p.x));
+ const y=Math.min(h-1,Math.floor(p.y));
+ const r=currentRegion(f);
+ if(!inRegion(x,y,r))throw Error("請點選藍框內的背景。");
+
+ const first=y*w+x,base=first*4;
+ if(!data[base+3])throw Error("此處已透明，請點有顏色的殘留背景。");
+
+ const rgb=[data[base],data[base+1],data[base+2]];
+ const limit=Number(E("tolerance").value)**2;
+
+ function matches(i){
+  const q=i*4;
+  if(!data[q+3])return false;
+  return (data[q]-rgb[0])**2+
+   (data[q+1]-rgb[1])**2+
+   (data[q+2]-rgb[2])**2<=limit;
+ }
+
+ if(E("bp-local").checked){
+  const seen=new Uint8Array(w*h);
+  const queue=new Uint32Array(w*h);
+  let head=0,tail=0;
+
+  function add(i){
+   if(seen[i])return;
+   seen[i]=1;
+   const xx=i%w,yy=Math.floor(i/w);
+   if(!inRegion(xx,yy,r)||!matches(i))return;
+   queue[tail++]=i;
+   data[i*4+3]=0;
+  }
+
+  add(first);
+  while(head<tail){
+   const i=queue[head++],xx=i%w;
+   if(xx>0)add(i-1);
+   if(xx<w-1)add(i+1);
+   if(i>=w)add(i-w);
+   if(i<w*(h-1))add(i+w);
+  }
+ }else{
+  for(let yy=r?.y||0;yy<(r?.bottom||h);yy++){
+   for(let xx=r?.x||0;xx<(r?.right||w);xx++){
+    const i=yy*w+xx;
+    if(matches(i))data[i*4+3]=0;
+   }
+  }
+ }
+
+ context.putImageData(image,0,0);
+ return c;
+}
+
+function brushDot(f,p){
+ const c=img(f.asset),context=c.getContext("2d");
+ const radius=Number(E("bp-brush").value)/2;
+ const r=currentRegion(f);
+
+ context.save();
+ if(r){
+  context.beginPath();
+  context.rect(r.x,r.y,r.right-r.x,r.bottom-r.y);
+  context.clip();
+ }
+ context.beginPath();
+ context.arc(p.x,p.y,radius,0,Math.PI*2);
+ context.clip();
+
+ if(mode==="restore"){
+  /*
+  按比例將原始素材對應到目前畫布。
+  去背工作區一般不改變素材尺寸。
+  */
+  context.clearRect(p.x-radius-1,p.y-radius-1,radius*2+2,radius*2+2);
+  context.drawImage(img(f.original),0,0,c.width,c.height);
+ }else{
+  context.clearRect(p.x-radius-1,p.y-radius-1,radius*2+2,radius*2+2);
+ }
+ context.restore();
+ assets.get(f.asset).bounds=undefined;
+}
+
+function brushLine(f,a,b){
+ const distance=Math.hypot(b.x-a.x,b.y-a.y);
+ const spacing=Math.max(1,Number(E("bp-brush").value)/5);
+ const count=Math.max(1,Math.ceil(distance/spacing));
+ for(let i=1;i<=count;i++){
+  const t=i/count;
+  brushDot(f,{
+   x:a.x+(b.x-a.x)*t,
+   y:a.y+(b.y-a.y)*t
+  });
+ }
+}
+
+surface.onpointerdown=async event=>{
+ if(busy||gesture||!current()||event.button!==0)return;
+ event.preventDefault();
+ pause();
+
+ const f=current(),p=sourcePoint(event);
+
+ try{
+  if(mode==="pick"){
+   const c=img(f.asset);
+   const data=c.getContext("2d").getImageData(
+    Math.min(c.width-1,Math.floor(p.x)),
+    Math.min(c.height-1,Math.floor(p.y)),1,1
+   ).data;
+   if(!data[3]){
+    message("此處已透明；請點圖片內有顏色的背景。");
+    return;
+   }
+   E("bg").value="#"+Array.from(data.slice(0,3))
+    .map(v=>v.toString(16).padStart(2,"0")).join("");
+   changed();
+   message("已取色，按「去背」；少量殘留可改用「點除殘留」。");
+   return;
+  }
+
+  if(mode==="click"){
+   await applyOperation("點除殘留",item=>eraseClicked(item,p),[f]);
+   return;
+  }
+
+  if(mode==="erase"||mode==="restore"){
+   saveEdit(f,copyCanvas(img(f.asset)));
+   changed();
+   invalidateDownload();
+  }
+
+  stroke={
+   id:event.pointerId,f,start:p,last:p,
+   oldRegion:region?{...region}:null
+  };
+  gesture={id:event.pointerId};
+  surface.setPointerCapture(event.pointerId);
+
+  if(mode==="erase"||mode==="restore"){
+   brushDot(f,p);
+   drawEditor();
+   drawPreview();
+  }
+ }catch(error){
+  stroke=null;
+  gesture=null;
+  collectAssets();
+  message(error.message);
+ }
+};
+
+surface.onpointermove=event=>{
+ if(!stroke||stroke.id!==event.pointerId)return;
+ const p=sourcePoint(event);
+
+ if(mode==="region"){
+  drawEditor({
+   x:Math.min(p.x,stroke.start.x),
+   y:Math.min(p.y,stroke.start.y),
+   w:Math.abs(p.x-stroke.start.x),
+   h:Math.abs(p.y-stroke.start.y)
+  });
+ }else{
+  brushLine(stroke.f,stroke.last,p);
+  drawEditor();
+  drawPreview();
+ }
+ stroke.last=p;
+};
+
+function finishStroke(cancel=false){
+ if(!stroke)return;
+ const s=stroke;
+ stroke=null;
+ gesture=null;
+
+ if(mode==="region"){
+  const c=img(s.f.asset);
+  const w=Math.abs(s.last.x-s.start.x);
+  const h=Math.abs(s.last.y-s.start.y);
+
+  region=cancel||w<2||h<2?s.oldRegion:{
+   x:Math.min(s.start.x,s.last.x)/c.width,
+   y:Math.min(s.start.y,s.last.y)/c.height,
+   w:w/c.width,h:h/c.height
+  };
+  regionFrame=s.f.id;
+  regionInfo();
+ }else{
+  changed();
+ }
+
+ if(surface.hasPointerCapture(s.id)){
+  surface.releasePointerCapture(s.id);
+ }
+ collectAssets();
+ refresh();
+}
+
+surface.onpointerup=event=>{
+ if(!stroke||stroke.id!==event.pointerId)return;
+ /* 將最後的指標位置也納入處理。 */
+ surface.onpointermove(event);
+ finishStroke();
+};
+surface.onpointercancel=()=>finishStroke(true);
+surface.onlostpointercapture=()=>finishStroke(true);
+
+E("bp-undo").onclick=()=>{
+ if(!allowed())return;
+ const f=current(),list=histories.get(f.id);
+ if(!list?.length){
+  message("沒有更多加強去背的復原紀錄。");
+  return;
+ }
+
+ try{
+  const entry=list[list.length-1];
+  const id=addAsset(copyCanvas(entry.canvas),"去背復原");
+  f.undo=f.asset;
+  f.asset=id;
+  list.pop();
+  discardEntry(entry);
+  changed();
+  collectAssets();
+  refresh();
+  message("已復原一步。");
+ }catch(error){message(error.message);}
+};
+
+/* 原本的重設也纳入多步復原。 */
+E("resetFrame").onclick=()=>{
+ if(!allowed())return;
+ const f=current();
+ if(f.asset===f.original)return;
+ remember(f);
+ f.undo=f.asset;
+ f.asset=f.original;
+ changed();
+ collectAssets();
+ refresh();
+};
+
+/*
+透明邊緣處理只修改 alpha，不進行 AI 補圖或 RGB 去污染。
+細線、髮絲可能受影響，因此納入復原。
+*/
+function adjustEdge(f,soft){
+ const c=copyCanvas(img(f.asset));
+ const context=c.getContext("2d");
+ const im=context.getImageData(0,0,c.width,c.height);
+ const source=new Uint8ClampedArray(im.data);
+ const w=c.width,h=c.height,r=currentRegion(f);
+
+ function alphaAt(x,y){
+  if(x<0||y<0||x>=w||y>=h)return 0;
+  return source[(y*w+x)*4+3];
+ }
+
+ for(let y=r?.y||0;y<(r?.bottom||h);y++){
+  for(let x=r?.x||0;x<(r?.right||w);x++){
+   const p=(y*w+x)*4+3;
+   const original=source[p];
+   if(!original)continue;
+
+   if(soft){
+    const average=(
+     original*4+
+     alphaAt(x-1,y)+alphaAt(x+1,y)+
+     alphaAt(x,y-1)+alphaAt(x,y+1)
+    )/8;
+    im.data[p]=Math.min(original,Math.round(average));
+   }else{
+    let minimum=original;
+    for(let dy=-1;dy<=1;dy++){
+     for(let dx=-1;dx<=1;dx++){
+      minimum=Math.min(minimum,alphaAt(x+dx,y+dy));
+     }
+    }
+    im.data[p]=minimum;
+   }
+  }
+ }
+
+ context.putImageData(im,0,0);
+ return c;
+}
+
+E("bp-shrink").onclick=async()=>{
+ if(!allowed())return;
+ await applyOperation("邊緣內縮",f=>adjustEdge(f,false),[current()]);
+};
+E("bp-soften").onclick=async()=>{
+ if(!allowed())return;
+ await applyOperation("柔化透明邊緣",f=>adjustEdge(f,true),[current()]);
+};
+
+E("bp-png").onclick=async()=>{
+ if(!allowed())return;
+
+ await job(async()=>{
+  const blob=await png(img(current().asset));
+  check();
+  invalidateDownload();
+  downloadURL=URL.createObjectURL(blob);
+
+  const link=E("bp-download");
+  link.href=downloadURL;
+  link.download="去背景_第"+(selected+1)+"張.png";
+  link.hidden=false;
+  link.click();
+
+  message("PNG 已建立。若沒有開始下載，請點旁邊的「下載 PNG」。");
+ });
+ /*
+原 job 的 finally 會呼叫 refresh 並清除舊連結。
+因此完成後重新提供同一張結果的可下載連結。
+*/
+ if(!busy && current() && !cancelled){
+  const f=current();
+  const asset=f.asset;
+  try{
+   const blob=await png(img(asset));
+   if(current()?.asset!==asset)return;
+   invalidateDownload();
+   downloadURL=URL.createObjectURL(blob);
+   const link=E("bp-download");
+   link.href=downloadURL;
+   link.download="去背景_第"+(selected+1)+"張.png";
+   link.hidden=false;
+  }catch(error){message(error.message);}
+ }
+};
+
+/* 載入另一個專案後，不沿用舊專案的影像復原。 */
+const originalProjectLoad=E("projectFile").onchange;
+E("projectFile").onchange=async function(event){
+ const previousFrames=frames;
+ await originalProjectLoad.call(this,event);
+ if(frames!==previousFrames){
+  for(const list of histories.values())list.forEach(discardEntry);
+  histories.clear();
+  historyBytes=0;
+  region=null;
+  regionFrame=null;
+  historyInfo();
+  regionInfo();
+  drawEditor();
+ }
+};
+
+window.addEventListener("pagehide",invalidateDownload);
+
+choose("pick");
+regionInfo();
+drawEditor();
+historyInfo();
+}
+
+/* 在指定 iframe 注入，使用它自己的素材與設定。 */
+function attach(frame){
+ if(frame.__backgroundPlusHooked)return;
+ frame.__backgroundPlusHooked=true;
+
+ function inject(){
+  try{
+   const win=frame.contentWindow;
+   const doc=frame.contentDocument;
+   if(!doc||win.__backgroundPlusReady)return;
+
+   /* 等前一版獨立工作區完成配置後，只增強去背景。 */
+   if(!doc.title.startsWith("去背景｜"))return;
+
+   const script=doc.createElement("script");
+   script.textContent="("+enhanceBackground.toString()+")();";
+   doc.body.append(script);
+  }catch(error){console.error("加強去背初始化失敗",error);}
+ }
+
+ frame.addEventListener("load",()=>setTimeout(inject,0));
+ setTimeout(inject,0);
+}
+
+if(window.__studioIndependentChild){
+ /*
+子頁由父頁注入，避免套用到橡皮擦、剪裁等其他獨立工具。
+*/
+ return;
+}
+
+const shell=document.getElementById("independentStudio");
+if(shell){
+ shell.querySelectorAll("iframe").forEach(attach);
+ const observer=new MutationObserver(()=>{
+  shell.querySelectorAll("iframe").forEach(attach);
+ });
+ observer.observe(shell,{childList:true,subtree:true});
+}else{
+ enhanceBackground();
+}
+
+})();
+</script>
+<!-- STUDIO_BACKGROUND_PLUS_END -->
 </body>
 </html>
