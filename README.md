@@ -1,4 +1,7 @@
-# Animation & Four-Direction Character Studio
+
+# DOWNLOAD & open with index.html
+ 
+Animation & Four-Direction Character Studio
 
 A browser-based animation editor and four-direction character preview tool, distributed as a single HTML file.
 
