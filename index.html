@@ -4060,5 +4060,617 @@ syncCrop();showSelection();sync();
 })();
 </script>
 <!-- STUDIO_MULTIFORMAT_3D_END -->
+<!-- STUDIO_INDEPENDENT_WORKSPACES_START -->
+<script>
+(function installIndependentWorkspaces(){
+"use strict";
+
+/* 子工作區不再建立第二層工作區。 */
+if(window.__studioIndependentChild ||
+   window.__studioIndependentInstalled)return;
+window.__studioIndependentInstalled=true;
+
+const specs=[
+ {id:"background",name:"去背景",hint:"載入圖片 → 點背景取色 → 按去背 → 下載 PNG"},
+ {id:"eraser",name:"橡皮擦",hint:"載入圖片 → 調整筆刷 → 拖曳擦除 → 下載 PNG"},
+ {id:"text",name:"框選去字",hint:"載入圖片 → 框住文字 → 放開擦除 → 下載 PNG"},
+ {id:"crop",name:"圖片剪裁",hint:"載入圖片 → 框選保留範圍 → 放開剪裁 → 下載 PNG"},
+ {id:"split",name:"圖集分割",hint:"載入圖集 → 設定行列 → 預覽格線 → 分割"},
+ {id:"images",name:"圖片動畫",hint:"載入多張圖片 → 排序及設定時間 → 播放與輸出"},
+ {id:"effects",name:"動畫特效",hint:"載入圖片 → 選擇特效 → 播放與輸出"},
+ {id:"layers",name:"圖層與字幕",hint:"載入底圖或建立透明畫布 → 加入圖像及文字 → 輸出"},
+ {id:"video",name:"影片抽格",hint:"載入影片 → 設定時間 → 擷取 → 預覽與輸出"},
+ {id:"export",name:"格式輸出",hint:"直接載入圖片 → 設定尺寸 → 輸出 PNG、GIF、WebM 或圖集"},
+ {id:"actor",name:"四向角色",hint:"直接匯入各方向動作圖片 → 預覽、操控及輸出"},
+ {id:"three",name:"多格式 3D",hint:"選取模型與貼圖 → 啟用 3D → 載入模型"}
+];
+
+/* 先恢復繁體，避免複製到已翻譯的介面文字。 */
+const languageSelect=document.getElementById("studioLanguageSelect");
+if(languageSelect){
+ languageSelect.value="zh-Hant";
+ languageSelect.dispatchEvent(new Event("change",{bubbles:true}));
+}
+
+/*
+複製程式頁面作為獨立工作區來源。
+移除原腳本動態建立的區塊，避免子頁重新執行時重複建立。
+*/
+const snapshot=document.documentElement.cloneNode(true);
+snapshot.querySelectorAll(
+ "#studioLanguageBar,#studioLanguageHelp,#studioGLB,"+
+ ".studioTranslatedNote,nav a[href='#studioGLB']"
+).forEach(el=>el.remove());
+
+for(const id of ["fourCards","frames","actorFrames"]){
+ const el=snapshot.querySelector("#"+id);
+ if(el)el.replaceChildren();
+}
+
+const childFlag=
+ "<scr"+"ipt>window.__studioIndependentChild=true;</scr"+"ipt>";
+const pageSource="<!DOCTYPE html>\n"+
+ snapshot.outerHTML.replace(/<head([^>]*)>/i,
+  match=>match+childFlag);
+
+/* 主頁只顯示功能選單；原介面保留但隱藏。 */
+const originalMain=document.querySelector("main");
+if(originalMain)originalMain.hidden=true;
+
+const style=document.createElement("style");
+style.textContent=`
+#independentStudio{
+ max-width:1500px;margin:auto;padding:16px;
+ color:#edf3fa;font:14px/1.7 system-ui,"Microsoft JhengHei",sans-serif
+}
+#independentStudio h1{margin:0;font-size:25px}
+#independentStudio .ind-note{color:#bac8db;font-size:13px}
+#independentStudio .ind-tabs{
+ display:flex;flex-wrap:wrap;gap:8px;margin:14px 0
+}
+#independentStudio button{
+ padding:9px 13px;border:1px solid #536781;border-radius:7px;
+ background:#263b57;color:white;font:inherit;cursor:pointer
+}
+#independentStudio button[aria-selected="true"]{
+ background:#2563eb;border-color:#9bc8ff
+}
+#independentStudio .ind-toolbar{
+ display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+ padding:12px;background:#18263a;border:1px solid #3c506d;
+ border-radius:9px;margin-bottom:12px
+}
+#independentStudio .ind-toolbar strong{font-size:17px}
+#independentStudio .ind-toolbar button{margin-left:auto}
+#independentStudio iframe{
+ display:block;width:100%;height:78vh;min-height:540px;
+ border:1px solid #40516b;border-radius:10px;background:#101722
+}
+#independentStudio iframe[hidden]{display:none!important}
+@media(max-width:650px){
+ #independentStudio{padding:10px}
+ #independentStudio iframe{height:80vh;min-height:420px}
+}
+`;
+document.head.append(style);
+
+const shell=document.createElement("div");
+shell.id="independentStudio";
+shell.dataset.studioLanguageOwned="1";
+shell.innerHTML=`
+<h1>獨立功能工作室</h1>
+<p class="ind-note">
+每個功能各自載入素材、保存設定與輸出結果；切換不會清空。
+重新整理或關閉前，請下載成品或目前功能的專案。
+</p>
+<div class="ind-tabs" role="tablist" aria-label="獨立功能"></div>
+<div class="ind-toolbar">
+ <strong id="ind-current"></strong>
+ <span class="ind-note" id="ind-hint"></span>
+ <button id="ind-reset" type="button">清空目前功能</button>
+</div>
+<div id="ind-pages"></div>
+`;
+document.body.append(shell);
+
+const tabs=shell.querySelector(".ind-tabs");
+const pages=shell.querySelector("#ind-pages");
+const instances=new Map();
+const buttons=new Map();
+let activeId=null;
+
+/*
+這個函式以 script 方式在子頁執行。
+每個子頁具有自己的 frames、assets、layers、actor、urls 等狀態。
+*/
+function configureWorkspace(spec){
+ "use strict";
+
+ const byId=id=>document.getElementById(id);
+ const main=document.querySelector("main");
+ if(!main)throw Error("找不到工作區主介面。");
+
+ const kind=spec.id;
+ const editing=["background","eraser","text","crop"].includes(kind);
+ const previewSection=byId("preview").closest("section");
+ const hasLocalUpload=!["video","actor","three"].includes(kind);
+
+ const lang=byId("studioLanguageSelect");
+ if(lang){
+  lang.value="zh-Hant";
+  lang.dispatchEvent(new Event("change",{bubbles:true}));
+ }
+
+ /* 避免其他功能尚未載入素材的提示干擾目前工作區。 */
+ function visibleSections(){
+  const set=new Set();
+
+  if(kind==="three"){
+   set.add(byId("studioGLB"));
+   return set;
+  }
+
+  set.add(byId("project"));
+
+  if(editing){
+   set.add(byId("editSection"));
+   set.add(previewSection);
+   set.add(byId("exportSection"));
+  }else if(kind==="split"){
+   set.add(byId("imageSection"));
+   set.add(byId("exportSection"));
+   set.add(previewSection);
+  }else if(kind==="images"||kind==="video"){
+   set.add(byId("imageSection"));
+   set.add(previewSection);
+   set.add(byId("exportSection"));
+   if(kind==="video")set.add(byId("videoSection"));
+  }else if(kind==="layers"){
+   set.add(byId("layerSection"));
+   set.add(previewSection);
+   set.add(byId("exportSection"));
+  }else if(kind==="effects"||kind==="export"){
+   set.add(previewSection);
+   set.add(byId("exportSection"));
+  }else if(kind==="actor"){
+   set.add(byId("actorSection"));
+   set.add(previewSection);
+   set.add(byId("exportSection"));
+  }
+
+  return set;
+ }
+
+ const visible=visibleSections();
+ main.querySelectorAll("section").forEach(section=>{
+  section.hidden=!visible.has(section);
+ });
+
+ const childStyle=document.createElement("style");
+ childStyle.textContent=`
+ main{max-width:1400px;padding:12px}
+ main>h1,main>p.note,main>nav,
+ #studioLanguageBar,#studioLanguageHelp{display:none!important}
+ main>div.grid{display:contents}
+ section{margin-top:12px}
+ #localWorkspace{
+  background:#182c46;border-color:#6484ac;
+  scroll-margin-top:12px
+ }
+ #localWorkspace .local-drop{
+  padding:20px;border:2px dashed #83a8d5;border-radius:8px;
+  text-align:center;cursor:pointer;margin:10px 0
+ }
+ #localWorkspace .local-drop.over{background:#294b75}
+ #localWorkspace .local-tools{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap
+ }
+ #localWorkspace .local-tools input[type=number]{width:85px}
+ #localWorkspace .local-tip{font-size:13px;color:#bdd5f0}
+ `;
+ document.head.append(childStyle);
+
+ /* 專案為目前功能專用，不跨工作區混用。 */
+ if(kind!=="three"){
+  const project=byId("project");
+  project.querySelector("h2").textContent="目前功能的專案";
+  const note=document.createElement("p");
+  note.className="note";
+  note.dataset.studioLanguageOwned="1";
+  note.textContent=
+   "建立及讀取專案只影響「"+spec.name+
+   "」。其他功能不會被覆蓋；3D 資料不包含在此專案中。";
+  project.append(note);
+  const helpLink=project.querySelector('a[href="#studioLanguageHelp"]');
+  if(helpLink)helpLink.hidden=true;
+ }
+
+ /* 原圖片區中的圖集設定，只保留在圖集分割工作區。 */
+ const splitHeading=Array.from(byId("imageSection").querySelectorAll("h3"))
+  .find(el=>el.textContent.includes("圖集"));
+
+ if(splitHeading&&kind!=="split"){
+  let node=splitHeading;
+  while(node){
+   node.hidden=true;
+   node=node.nextElementSibling;
+  }
+ }
+
+ /* 各編輯工具獨立配置。 */
+ if(editing){
+  const toolMap={
+   background:"pick",eraser:"erase",text:"text",crop:"crop"
+  };
+  const targetTool=toolMap[kind];
+  const toolButton=document.querySelector(
+   '#tools [data-tool="'+targetTool+'"]'
+  );
+  toolButton.click();
+
+  document.querySelectorAll("#tools [data-tool]").forEach(button=>{
+   button.hidden=button.dataset.tool!==targetTool;
+  });
+
+  byId("editSection").querySelector("h2").textContent=spec.name;
+  byId("removeBg").closest(".row").hidden=kind!=="background";
+
+  const batchRow=byId("batch").closest(".row");
+  batchRow.hidden=kind==="eraser";
+  byId("edgeOnly").closest("label").hidden=kind!=="background";
+  byId("brush").closest("label").hidden=kind!=="eraser";
+
+  byId("batch").checked=false;
+ }
+
+ /* 除特效工作區外，預設不顯示特效設定。 */
+ if(kind!=="effects"){
+  byId("fx").value="none";
+  byId("fx").closest(".row").hidden=true;
+  byId("fxFrames").closest("label").hidden=true;
+ }
+
+ /*
+每個圖片功能都具有直接載入入口。
+資料只加入這個 iframe 的動畫狀態。
+*/
+ if(hasLocalUpload){
+  const local=document.createElement("section");
+  local.id="localWorkspace";
+  local.dataset.studioLanguageOwned="1";
+  local.innerHTML=`
+  <h2></h2>
+  <div class="local-drop" role="button" tabindex="0">
+   點這裡載入圖片，或將圖片拖曳到這裡
+  </div>
+  <input class="local-files" type="file" accept="image/*" multiple hidden>
+  <div class="local-tools">
+   <button class="local-open" type="button">載入圖片</button>
+   <button class="local-png" type="button">下載目前圖片 PNG</button>
+   <button class="local-delete" type="button">刪除選取圖片</button>
+   <label>畫布寬 <input class="local-width" type="number"
+    min="16" max="3840" value="640"></label>
+   <label>高 <input class="local-height" type="number"
+    min="16" max="3840" value="360"></label>
+   <button class="local-blank" type="button">建立透明畫布</button>
+  </div>
+  <p class="local-tip">
+   素材只載入目前功能。再次載入會追加；點縮圖切換圖片。
+  </p>
+  <a class="local-download btn" hidden download>下載目前圖片 PNG</a>
+  `;
+
+  local.querySelector("h2").textContent=spec.name+"｜載入與編輯";
+  main.prepend(local);
+
+  const input=local.querySelector(".local-files");
+  const drop=local.querySelector(".local-drop");
+  const saveLink=local.querySelector(".local-download");
+  const directURLs=new Set();
+
+  function open(){
+   if(!busy&&!gesture)input.click();
+  }
+
+  async function receive(files){
+   if(busy||gesture)return;
+   await importImages(files);
+   saveLink.hidden=true;
+   if(kind==="split"&&current())byId("showGrid").click();
+  }
+
+  local.querySelector(".local-open").onclick=open;
+  drop.onclick=open;
+  drop.onkeydown=event=>{
+   if(event.key==="Enter"||event.key===" "){
+    event.preventDefault();open();
+   }
+  };
+  input.onchange=async()=>{
+   const files=Array.from(input.files);
+   input.value="";
+   await receive(files);
+  };
+
+  for(const type of ["dragenter","dragover"]){
+   drop.addEventListener(type,event=>{
+    event.preventDefault();
+    if(!busy)drop.classList.add("over");
+   });
+  }
+  drop.ondragleave=()=>drop.classList.remove("over");
+  drop.ondrop=event=>{
+   event.preventDefault();
+   event.stopPropagation();
+   drop.classList.remove("over");
+   receive(Array.from(event.dataTransfer.files));
+  };
+
+  local.querySelector(".local-delete").onclick=()=>{
+   byId("frameDelete").click();
+   saveLink.hidden=true;
+  };
+
+  /*
+直接輸出處理後的素材：
+保留實際剪裁尺寸與透明度，不經輸出區的縮放或圖層合成。
+*/
+  local.querySelector(".local-png").onclick=async()=>{
+   if(!allowed())return;
+
+   await job(async()=>{
+    const f=current();
+    const blob=await png(img(f.asset));
+    check();
+
+    const url=URL.createObjectURL(blob);
+    directURLs.add(url);
+    saveLink.href=url;
+    saveLink.download=spec.name+"_第"+(selected+1)+"張.png";
+    saveLink.hidden=false;
+    saveLink.click();
+
+    message(
+     "PNG 已建立並嘗試下載；若瀏覽器攔截，請點「下載目前圖片 PNG」。"
+    );
+   });
+  };
+
+  local.querySelector(".local-blank").onclick=async()=>{
+   if(busy||gesture)return;
+
+   await job(async()=>{
+    const w=Math.round(clamp(
+     Number(local.querySelector(".local-width").value)||640,16,3840
+    ));
+    const h=Math.round(clamp(
+     Number(local.querySelector(".local-height").value)||360,16,3840
+    ));
+
+    checkItems(1);
+    const c=canvas(w,h);
+    const id=addAsset(c,"透明畫布");
+    frames.push(frame(id,100));
+    selected=frames.length-1;
+    setSize(w,h);
+    align();
+    changed();
+    saveLink.hidden=true;
+    message("已建立透明畫布，可直接新增圖像或文字圖層。");
+   });
+  };
+
+  /* 縮圖搬到目前功能的載入區，不依賴圖片動畫頁。 */
+  local.append(byId("frames"));
+
+  /* 原入口在本工作區不再重複顯示。 */
+  byId("drop").hidden=true;
+
+  window.addEventListener("pagehide",()=>{
+   directURLs.forEach(url=>URL.revokeObjectURL(url));
+  });
+ }
+
+ /* 圖層工作區就地加入預覽，毋須切到其他功能。 */
+ if(kind==="layers"){
+  byId("layerSection").querySelector("h2").textContent="圖像、氣泡、字幕與旁白";
+ }
+
+ /* 角色動作可在本工作區直接準備 GIF。 */
+ if(kind==="actor"){
+  const button=document.createElement("button");
+  button.type="button";
+  button.className="primary";
+  button.textContent="以目前動作建立 GIF";
+  button.dataset.studioLanguageOwned="1";
+  byId("actorToAnimation").after(button);
+
+  button.onclick=async()=>{
+   if(busy||gesture)return;
+   if(!clip().items.length){
+    message("請先匯入目前方向及動作的圖片。");
+    return;
+   }
+
+   if(frames.length&&!confirm(
+    "將取代本角色工作區的動畫輸出影格；角色動作素材與其他功能不受影響。繼續？"
+   ))return;
+
+   pause();
+   frames=[];
+   layers=[];
+   selected=-1;
+   activeLayer=null;
+   position=0;
+   collectAssets();
+   listLayers();
+   changed();
+   refresh();
+
+   await byId("actorToAnimation").onclick();
+
+   if(!frames.length||cancelled)return;
+   await byId("exportGif").onclick();
+  };
+ }
+
+ /*
+切換到其他功能時暫停播放。
+尚在執行的非 RAF 工作，例如編碼，仍由原本工作流程完成。
+*/
+ let workspaceActive=true;
+ const nativeRAF=window.requestAnimationFrame.bind(window);
+ const nativeCancelRAF=window.cancelAnimationFrame.bind(window);
+ const parked=new Map();
+
+ window.requestAnimationFrame=function(callback){
+  let id;
+  id=nativeRAF(time=>{
+   if(workspaceActive)callback(time);
+   else parked.set(id,callback);
+  });
+  return id;
+ };
+
+ window.cancelAnimationFrame=function(id){
+  parked.delete(id);
+  nativeCancelRAF(id);
+ };
+
+ window.__setIndependentActive=function(active){
+  workspaceActive=!!active;
+
+  if(!workspaceActive){
+   pause();
+   clearKeys();
+   video.pause();
+  }else{
+   const callbacks=Array.from(parked.values());
+   parked.clear();
+   callbacks.forEach(callback=>nativeRAF(callback));
+  }
+ };
+
+ /* 父頁用來避免切換或清空正在處理中的功能。 */
+ window.__independentIsBusy=()=>busy||!!gesture;
+
+ listLayers();
+ refresh();
+ refreshActor();
+
+ document.title=spec.name+"｜獨立工作區";
+ message(spec.hint);
+}
+
+function createWorkspace(spec){
+ const iframe=document.createElement("iframe");
+ iframe.title=spec.name+"獨立工作區";
+ iframe.hidden=true;
+ iframe.setAttribute("allow","autoplay");
+
+ const instance={iframe,ready:false};
+ instances.set(spec.id,instance);
+
+ iframe.addEventListener("load",()=>{
+  try{
+   const doc=iframe.contentDocument;
+   const script=doc.createElement("script");
+   script.textContent=
+    "("+configureWorkspace.toString()+")("+JSON.stringify(spec)+");";
+   doc.body.append(script);
+
+   instance.ready=true;
+   iframe.contentWindow.__setIndependentActive?.(activeId===spec.id);
+  }catch(error){
+   console.error(error);
+   shell.querySelector("#ind-hint").textContent=
+    "工作區初始化失敗："+error.message;
+  }
+ },{once:true});
+
+ iframe.srcdoc=pageSource;
+ pages.append(iframe);
+ return instance;
+}
+
+function currentWorking(){
+ const instance=instances.get(activeId);
+ return instance?.ready &&
+  instance.iframe.contentWindow.__independentIsBusy?.();
+}
+
+function activate(id){
+ if(id!==activeId&&currentWorking()){
+  alert("目前功能正在處理或編輯中，請等待完成或先取消。");
+  return;
+ }
+
+ const spec=specs.find(item=>item.id===id);
+ if(!spec)return;
+
+ activeId=id;
+ let instance=instances.get(id);
+ if(!instance)instance=createWorkspace(spec);
+
+ for(const [key,item] of instances){
+  const active=key===id;
+  item.iframe.hidden=!active;
+  if(item.ready){
+   item.iframe.contentWindow.__setIndependentActive?.(active);
+  }
+ }
+
+ for(const [key,button] of buttons){
+  button.setAttribute("aria-selected",String(key===id));
+ }
+
+ shell.querySelector("#ind-current").textContent=spec.name;
+ shell.querySelector("#ind-hint").textContent=spec.hint;
+}
+
+for(const spec of specs){
+ const button=document.createElement("button");
+ button.type="button";
+ button.role="tab";
+ button.textContent=spec.name;
+ button.setAttribute("aria-selected","false");
+ button.onclick=()=>activate(spec.id);
+ buttons.set(spec.id,button);
+ tabs.append(button);
+}
+
+shell.querySelector("#ind-reset").onclick=()=>{
+ if(currentWorking()){
+  alert("請等待目前工作完成，或先取消，再清空。");
+  return;
+ }
+
+ const spec=specs.find(item=>item.id===activeId);
+ if(!spec)return;
+ if(!confirm(
+  "清空「"+spec.name+"」的素材與設定？其他功能會保留。尚未下載的內容將消失。"
+ ))return;
+
+ const old=instances.get(activeId);
+ if(old){
+  old.iframe.contentWindow.__setIndependentActive?.(false);
+  old.iframe.remove();
+  instances.delete(activeId);
+ }
+ activate(activeId);
+};
+
+/* 有工作區開啟時，離開整頁前提醒保存。 */
+window.addEventListener("beforeunload",event=>{
+ if(instances.size){
+  event.preventDefault();
+  event.returnValue="";
+ }
+});
+
+activate("background");
+})();
+</script>
+<!-- STUDIO_INDEPENDENT_WORKSPACES_END -->
 </body>
 </html>
